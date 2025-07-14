@@ -1,13 +1,14 @@
 package legacyver
 
 import (
+	"strings"
+
 	"github.com/akmalfairuz/legacy-version/legacyver/legacypacket"
 	"github.com/akmalfairuz/legacy-version/legacyver/proto"
 	"github.com/samber/lo"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
-	"strings"
 )
 
 var (
@@ -134,9 +135,6 @@ func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packe
 type Protocol struct {
 	ver string
 	id  int32
-
-	blockTranslator BlockTranslator
-	itemTranslator  ItemTranslator
 }
 
 func (p *Protocol) Ver() string {
@@ -163,15 +161,11 @@ func (p *Protocol) NewWriter(w minecraft.ByteWriter, shieldID int32) protocol.IO
 }
 
 func (p *Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []packet.Packet {
-	return p.blockTranslator.UpgradeBlockPackets(
-		p.itemTranslator.UpgradeItemPackets(p.upgradePackets([]packet.Packet{pk}, conn), conn),
-		conn)
+	return p.upgradePackets([]packet.Packet{pk}, conn)
 }
 
 func (p *Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) []packet.Packet {
-	return p.downgradePackets(p.blockTranslator.DowngradeBlockPackets(
-		p.itemTranslator.DowngradeItemPackets([]packet.Packet{pk}, conn),
-		conn), conn)
+	return p.downgradePackets([]packet.Packet{pk}, conn)
 }
 
 func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) []packet.Packet {
@@ -513,8 +507,6 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				items[i] = (&proto.LegacyItemRegistryEntry{}).FromLatest(it)
 			}
 
-			items = p.itemTranslator.DowngradeLegacyItemRegistry(items)
-
 			pks[pkIndex] = &legacypacket.StartGame{
 				Items:                          items,
 				EntityUniqueID:                 pk.EntityUniqueID,
@@ -607,8 +599,6 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 			for i, it := range pk.Items {
 				items[i] = (&proto.ItemEntry{}).FromLatest(it)
 			}
-
-			items = p.itemTranslator.DowngradeItemEntries(items)
 
 			if p.ID() < proto.ID776 {
 				items = lo.Filter(items, func(item proto.ItemEntry, index int) bool {
@@ -1202,8 +1192,6 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 				Items:  items,
 			}
 		case *legacypacket.ItemRegistry:
-			pk.Items = p.itemTranslator.UpgradeItemEntries(pk.Items)
-
 			items := make([]protocol.ItemEntry, len(pk.Items))
 			for i, it := range pk.Items {
 				items[i] = it.ToLatest()

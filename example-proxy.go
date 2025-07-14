@@ -2,15 +2,16 @@ package main
 
 import (
 	"errors"
+	"log"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/akmalfairuz/legacy-version/legacyver"
 	"github.com/pelletier/go-toml"
 	"github.com/sandertv/gophertunnel/minecraft"
 	"github.com/sandertv/gophertunnel/minecraft/auth"
 	"golang.org/x/oauth2"
-	"log"
-	"os"
-	"sync"
-	"time"
 )
 
 // The following program implements a proxy that forwards players from one local address to a remote address.
@@ -28,7 +29,7 @@ func main() {
 	}
 	listener, err := minecraft.ListenConfig{
 		StatusProvider:    p,
-		AcceptedProtocols: legacyver.All(false),
+		AcceptedProtocols: legacyver.All(),
 	}.Listen("raknet", config.Connection.LocalAddress)
 	if err != nil {
 		panic(err)

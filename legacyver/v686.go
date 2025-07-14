@@ -2,33 +2,12 @@ package legacyver
 
 import (
 	_ "embed"
-	"github.com/akmalfairuz/legacy-version/internal/chunk"
+
 	"github.com/akmalfairuz/legacy-version/legacyver/proto"
-	"github.com/akmalfairuz/legacy-version/mapping"
 )
 
-const (
-	// ItemVersion686 ...
-	ItemVersion686 = 191
-	// BlockVersion686 ...
-	BlockVersion686 int32 = (1 << 24) | (21 << 16) | (2 << 8)
-)
-
-var (
-	//go:embed data/required_item_list_686.json
-	requiredItemList686 []byte
-	//go:embed data/block_states_686.nbt
-	blockStateData686 []byte
-)
-
-func New686(dragonflyMapping bool) *Protocol {
-	itemMapping := mapping.NewItemMapping(requiredItemList686, ItemVersion686)
-	blockMapping := mapping.NewBlockMapping(blockStateData686)
-
+func New686() *Protocol {
 	return &Protocol{
-		ver:             "1.21.2",
-		id:              proto.ID686,
-		blockTranslator: NewBlockTranslator(blockMapping, blockMappingLatest, chunk.NewNetworkPersistentEncoding(blockMapping, BlockVersion686), chunk.NewBlockPaletteEncoding(blockMapping, BlockVersion686), false),
-		itemTranslator:  NewItemTranslator(itemMapping, itemMappingLatest(dragonflyMapping), blockMapping, blockMappingLatest),
-	}
+		ver: "1.21.2",
+		id:  proto.ID686}
 }

@@ -6,10 +6,9 @@ import (
 	"github.com/akmalfairuz/legacy-version/legacyver/proto"
 )
 
-// New649 ...
-func New649() *Protocol {
+func New818() *Protocol {
 	return &Protocol{
-		ver: "1.20.60",
-		id:  proto.ID649,
+		ver: "1.21.90",
+		id:  proto.ID818,
 	}
 }

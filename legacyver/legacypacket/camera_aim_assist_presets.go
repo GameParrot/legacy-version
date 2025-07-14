@@ -34,3 +34,17 @@ func (pk *CameraAimAssistPresets) Marshal(io protocol.IO) {
 		io.Uint8(&pk.Operation)
 	}
 }
+
+// CameraAimAssistCategoryGroup is a group of categories which can be used by a CameraAimAssistPreset.
+type CameraAimAssistCategoryGroup struct {
+	// Identifier is the unique identifier of the group.
+	Identifier string
+	// Categories is a list of categories within this group.
+	Categories []protocol.CameraAimAssistCategory
+}
+
+// Marshal encodes/decodes a CameraAimAssistCategoryGroup.
+func (x *CameraAimAssistCategoryGroup) Marshal(r protocol.IO) {
+	r.String(&x.Identifier)
+	protocol.Slice(r, &x.Categories)
+}
