@@ -2,6 +2,7 @@ package proto
 
 import (
 	"fmt"
+
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 

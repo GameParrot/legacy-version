@@ -1,9 +1,10 @@
 package proto
 
 import (
+	"image/color"
+
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
-	"image/color"
 )
 
 // PlayerListEntry is an entry found in the PlayerList packet. It represents a single player using the UUID

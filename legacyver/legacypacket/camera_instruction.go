@@ -18,6 +18,8 @@ type CameraInstruction struct {
 	Target protocol.Optional[protocol.CameraInstructionTarget]
 	// RemoveTarget can be set to true to remove the current aim assist target.
 	RemoveTarget protocol.Optional[bool]
+	// FieldOfView is a camera instruction that updates the field of view for the camera.
+	FieldOfView protocol.Optional[protocol.CameraInstructionFieldOfView]
 }
 
 // ID ...
@@ -32,5 +34,8 @@ func (pk *CameraInstruction) Marshal(io protocol.IO) {
 	if proto.IsProtoGTE(io, proto.ID712) {
 		protocol.OptionalMarshaler(io, &pk.Target)
 		protocol.OptionalFunc(io, &pk.RemoveTarget, io.Bool)
+	}
+	if proto.IsProtoGTE(io, proto.ID827) {
+		protocol.OptionalMarshaler(io, &pk.FieldOfView)
 	}
 }

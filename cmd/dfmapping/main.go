@@ -4,11 +4,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/samber/lo"
-	"github.com/sandertv/gophertunnel/minecraft/nbt"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/samber/lo"
+	"github.com/sandertv/gophertunnel/minecraft/nbt"
 )
 
 func main() {

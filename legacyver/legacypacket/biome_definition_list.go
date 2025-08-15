@@ -2,6 +2,7 @@ package legacypacket
 
 import (
 	"encoding/base64"
+
 	"github.com/akmalfairuz/legacy-version/legacyver/proto"
 	"github.com/samber/lo"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
@@ -13,7 +14,7 @@ import (
 // accurately recreate the server-side generation in vanilla worlds/servers for increased performance.
 type BiomeDefinitionList struct {
 	// BiomeDefinitions is a list of biomes that are available on the server.
-	BiomeDefinitions []protocol.BiomeDefinition
+	BiomeDefinitions []proto.BiomeDefinition
 	// StringList is a makeshift dictionary implementation Mojang created to try and reduce the size of the
 	// overall packet. It is a list of common strings that are used in the biome definitions, such as
 	// biome names, float values or query expressions.
