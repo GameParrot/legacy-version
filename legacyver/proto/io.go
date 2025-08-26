@@ -132,3 +132,55 @@ func IORecipe(io protocol.IO, recipe *Recipe) {
 		(*recipe).Marshal(io.(*Writer))
 	}
 }
+
+func IOGameRule(io protocol.IO, x *protocol.GameRule) {
+	io.String(&x.Name)
+	io.Bool(&x.CanBeModifiedByPlayer)
+
+	if IsReader(io) {
+		var t uint32
+		io.Varuint32(&t)
+
+		switch t {
+		case 1:
+			var v bool
+			io.Bool(&v)
+			x.Value = v
+		case 2:
+			var v uint32
+			if IsProtoGTE(io, ID843) {
+				io.Uint32(&v)
+			} else {
+				io.Varuint32(&v)
+			}
+			x.Value = v
+		case 3:
+			var v float32
+			io.Float32(&v)
+			x.Value = v
+		default:
+			io.UnknownEnumOption(t, "game rule type")
+		}
+	} else {
+		switch v := x.Value.(type) {
+		case bool:
+			id := uint32(1)
+			io.Varuint32(&id)
+			io.Bool(&v)
+		case uint32:
+			id := uint32(2)
+			io.Varuint32(&id)
+			if IsProtoGTE(io, ID843) {
+				io.Uint32(&v)
+			} else {
+				io.Varuint32(&v)
+			}
+		case float32:
+			id := uint32(3)
+			io.Varuint32(&id)
+			io.Float32(&v)
+		default:
+			io.UnknownEnumOption(fmt.Sprintf("%T", v), "game rule type")
+		}
+	}
+}
