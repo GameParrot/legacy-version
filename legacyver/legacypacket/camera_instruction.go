@@ -20,6 +20,12 @@ type CameraInstruction struct {
 	RemoveTarget protocol.Optional[bool]
 	// FieldOfView is a camera instruction that updates the field of view for the camera.
 	FieldOfView protocol.Optional[protocol.CameraInstructionFieldOfView]
+	// Spline is a camera instruction that creates a spline path for the camera to follow.
+	Spline protocol.Optional[protocol.CameraSplineInstruction]
+	// AttachToEntity is the entity ID to attach the camera to.
+	AttachToEntity protocol.Optional[int64]
+	// DetachFromEntity can be set to true to detach the camera from the current entity.
+	DetachFromEntity protocol.Optional[bool]
 }
 
 // ID ...
@@ -37,5 +43,10 @@ func (pk *CameraInstruction) Marshal(io protocol.IO) {
 	}
 	if proto.IsProtoGTE(io, proto.ID827) {
 		protocol.OptionalMarshaler(io, &pk.FieldOfView)
+	}
+	if proto.IsProtoGTE(io, proto.ID859) {
+		protocol.OptionalMarshaler(io, &pk.Spline)
+		protocol.OptionalFunc(io, &pk.AttachToEntity, io.Int64)
+		protocol.OptionalFunc(io, &pk.DetachFromEntity, io.Bool)
 	}
 }
