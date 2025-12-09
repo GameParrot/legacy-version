@@ -31,6 +31,8 @@ func init() {
 
 func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packet {
 	switch pid {
+	case packet.IDInteract:
+		return func() packet.Packet { return &legacypacket.Interact{} }
 	case packet.IDAvailableCommands:
 		return func() packet.Packet { return &legacypacket.AvailableCommands{} }
 	case packet.IDCommandRequest:

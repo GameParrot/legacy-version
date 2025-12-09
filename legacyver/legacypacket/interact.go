@@ -40,9 +40,9 @@ func (pk *Interact) Marshal(io protocol.IO) {
 	io.Uint8(&pk.ActionType)
 	io.Varuint64(&pk.TargetEntityRuntimeID)
 	if proto.IsProtoGTE(io, proto.ID898) {
-		b := uint8(1)
-		io.Uint8(&b)
-		if b == 1 {
+		b := true
+		io.Bool(&b)
+		if b {
 			io.Vec3(&pk.Position)
 		}
 	} else {

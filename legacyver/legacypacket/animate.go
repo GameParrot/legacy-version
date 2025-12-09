@@ -30,7 +30,13 @@ func (*Animate) ID() uint32 {
 }
 
 func (pk *Animate) Marshal(io protocol.IO) {
-	io.Varint32(&pk.ActionType)
+	if proto.IsProtoGTE(io, proto.ID898) {
+		at := uint8(pk.ActionType)
+		io.Uint8(&at)
+		pk.ActionType = int32(at)
+	} else {
+		io.Varint32(&pk.ActionType)
+	}
 	io.Varuint64(&pk.EntityRuntimeID)
 	if proto.IsProtoGTE(io, proto.ID859) {
 		io.Float32(&pk.Data)
