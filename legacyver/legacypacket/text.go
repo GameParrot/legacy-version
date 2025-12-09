@@ -62,19 +62,25 @@ func (pk *Text) Marshal(io protocol.IO) {
 	if proto.IsProtoGTE(io, proto.ID898) {
 		io.Bool(&pk.NeedsTranslation)
 
-		switch pk.TextType {
-		case TextTypeChat, TextTypeWhisper, TextTypeAnnouncement:
-			o := uint8(1)
-			io.Uint8(&o)
+		var categoryType uint8
+		if pk.TextType == TextTypeRaw || pk.TextType == TextTypeTip || pk.TextType == TextTypeSystem || pk.TextType == TextTypeObjectWhisper || pk.TextType == TextTypeObjectAnnouncement || pk.TextType == TextTypeObject {
+			categoryType = 0
+		} else if pk.TextType == TextTypeChat || pk.TextType == TextTypeWhisper || pk.TextType == TextTypeAnnouncement {
+			categoryType = 1
+		} else {
+			categoryType = 2
+		}
+		io.Uint8(&categoryType)
+
+		switch categoryType {
+		case 1:
 			s := "chat"
 			io.String(&s)
 			s = "whisper"
 			io.String(&s)
 			s = "announcement"
 			io.String(&s)
-		case TextTypeRaw, TextTypeTip, TextTypeSystem, TextTypeObject, TextTypeObjectWhisper, TextTypeObjectAnnouncement:
-			o := uint8(0)
-			io.Uint8(&o)
+		case 0:
 			s := "raw"
 			io.String(&s)
 			s = "tip"
@@ -87,9 +93,7 @@ func (pk *Text) Marshal(io protocol.IO) {
 			io.String(&s)
 			s = "textObject"
 			io.String(&s)
-		case TextTypeTranslation, TextTypePopup, TextTypeJukeboxPopup:
-			o := uint8(2)
-			io.Uint8(&o)
+		case 2:
 			s := "translate"
 			io.String(&s)
 			s = "popup"
@@ -119,9 +123,9 @@ func (pk *Text) Marshal(io protocol.IO) {
 	io.String(&pk.PlatformChatID)
 
 	if proto.IsProtoGTE(io, proto.ID898) {
-		b := uint8(1)
-		io.Uint8(&b)
-		if b == 1 {
+		b := false
+		io.Bool(&b)
+		if b {
 			io.String(&pk.FilteredMessage)
 		}
 	} else if proto.IsProtoGTE(io, proto.ID685) {

@@ -54,8 +54,16 @@ func (pk *CommandOutput) Marshal(io protocol.IO) {
 		io.Uint8(&pk.OutputType)
 		io.Varuint32(&pk.SuccessCount)
 	}
+
 	protocol.Slice(io, &pk.OutputMessages)
-	if pk.OutputType == CommandOutputTypeDataSet || proto.IsProtoGTE(io, proto.ID898) {
+
+	if proto.IsProtoGTE(io, proto.ID898) {
+		b := false
+		io.Bool(&b)
+		if b {
+			io.String(&pk.DataSet)
+		}
+	} else if pk.OutputType == CommandOutputTypeDataSet {
 		io.String(&pk.DataSet)
 	}
 }

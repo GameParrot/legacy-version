@@ -35,8 +35,6 @@ func (pk *CommandRequest) Marshal(io protocol.IO) {
 	if proto.IsProtoGTE(io, proto.ID898) {
 		s := "latest"
 		io.String(&s)
-		var b []byte
-		io.Bytes(&b)
 	} else {
 		io.Varint32(&pk.Version)
 	}

@@ -178,7 +178,10 @@ func CommandOriginData(r protocol.IO, x *CommandOrigin) {
 	}
 	r.UUID(&x.UUID)
 	r.String(&x.RequestID)
-	if x.Origin == protocol.CommandOriginDevConsole || x.Origin == protocol.CommandOriginTest || IsProtoGTE(r, ID898) {
+
+	if IsProtoGTE(r, ID898) {
+		r.Int64(&x.PlayerUniqueID)
+	} else if x.Origin == protocol.CommandOriginDevConsole || x.Origin == protocol.CommandOriginTest {
 		r.Varint64(&x.PlayerUniqueID)
 	}
 }
