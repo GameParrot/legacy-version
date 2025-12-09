@@ -819,6 +819,12 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 		switch pk := pk.(type) {
 		case *packet.ClientCacheStatus:
 			pk.Enabled = false // TODO: enable when chunk translation is not broken
+		case *legacypacket.Interact:
+			pks[pkIndex] = &packet.Interact{
+				ActionType:            pk.ActionType,
+				TargetEntityRuntimeID: pk.TargetEntityRuntimeID,
+				Position:              pk.Position,
+			}
 		case *legacypacket.CommandRequest:
 			pks[pkIndex] = &packet.CommandRequest{
 				CommandLine:   pk.CommandLine,
