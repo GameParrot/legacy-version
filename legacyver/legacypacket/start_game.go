@@ -338,7 +338,7 @@ func (pk *StartGame) Marshal(io protocol.IO) {
 	io.UUID(&pk.WorldTemplateID)
 	io.Bool(&pk.ClientSideGeneration)
 	io.Bool(&pk.UseBlockNetworkIDHashes)
-	if proto.IsProtoGTE(io, proto.ID827) {
+	if proto.IsProtoGTE(io, proto.ID827) && proto.IsProtoLT(io, proto.ID898) {
 		io.Bool(&pk.TickDeathSystemsEnabled)
 	}
 	io.Bool(&pk.ServerAuthoritativeSound)

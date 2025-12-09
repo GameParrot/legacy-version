@@ -41,7 +41,9 @@ func (*ResourcePackStack) ID() uint32 {
 
 func (pk *ResourcePackStack) Marshal(io protocol.IO) {
 	io.Bool(&pk.TexturePackRequired)
-	protocol.Slice(io, &pk.BehaviourPacks)
+	if proto.IsProtoLT(io, proto.ID898) {
+		protocol.Slice(io, &pk.BehaviourPacks)
+	}
 	protocol.Slice(io, &pk.TexturePacks)
 	io.String(&pk.BaseGameVersion)
 	protocol.SliceUint32Length(io, &pk.Experiments)

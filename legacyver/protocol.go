@@ -31,6 +31,12 @@ func init() {
 
 func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packet {
 	switch pid {
+	case packet.IDAvailableCommands:
+		return func() packet.Packet { return &legacypacket.AvailableCommands{} }
+	case packet.IDCommandRequest:
+		return func() packet.Packet { return &legacypacket.CommandRequest{} }
+	case packet.IDCommandOutput:
+		return func() packet.Packet { return &legacypacket.CommandOutput{} }
 	case packet.IDCameraAimAssist:
 		return func() packet.Packet { return &legacypacket.CameraAimAssist{} }
 	case packet.IDCameraPresets:
@@ -175,6 +181,51 @@ func (p *Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) []p
 func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) []packet.Packet {
 	for pkIndex, pk := range pks {
 		switch pk := pk.(type) {
+		case *packet.AvailableCommands:
+			commands := make([]proto.Command, len(pk.Commands))
+			for i, c := range pk.Commands {
+				commands[i] = proto.Command{Name: c.Name, Description: c.Description, Flags: c.Flags, PermissionLevel: c.PermissionLevel, AliasesOffset: c.AliasesOffset, ChainedSubcommandOffsets: c.ChainedSubcommandOffsets, Overloads: c.Overloads}
+			}
+			enums := make([]proto.CommandEnum, len(pk.Commands))
+			for i, c := range pk.Enums {
+				enums[i] = proto.CommandEnum{Type: c.Type, ValueIndices: c.ValueIndices}
+			}
+			chainedSubcommands := make([]proto.ChainedSubcommand, len(pk.ChainedSubcommands))
+			for i, c := range pk.ChainedSubcommands {
+				values := make([]proto.ChainedSubcommandValue, len(c.Values))
+				for ii, v := range values {
+					values[ii] = proto.ChainedSubcommandValue{Index: v.Index, Value: v.Value}
+				}
+				chainedSubcommands[i] = proto.ChainedSubcommand{Name: c.Name, Values: values}
+			}
+
+			pks[pkIndex] = &legacypacket.AvailableCommands{
+				EnumValues:              pk.EnumValues,
+				ChainedSubcommandValues: pk.ChainedSubcommandValues,
+				Suffixes:                pk.Suffixes,
+				Enums:                   enums,
+				ChainedSubcommands:      chainedSubcommands,
+				Commands:                commands,
+				DynamicEnums:            pk.DynamicEnums,
+				Constraints:             pk.Constraints,
+			}
+		case *packet.CommandOutput:
+			outputMessages := make([]proto.CommandOutputMessage, len(pk.OutputMessages))
+			for i, c := range pk.OutputMessages {
+				outputMessages[i] = proto.CommandOutputMessage{Success: c.Success, Message: c.Message, Parameters: c.Parameters}
+			}
+			pks[pkIndex] = &legacypacket.CommandOutput{
+				CommandOrigin: proto.CommandOrigin{
+					Origin:         pk.CommandOrigin.Origin,
+					UUID:           pk.CommandOrigin.UUID,
+					RequestID:      pk.CommandOrigin.RequestID,
+					PlayerUniqueID: pk.CommandOrigin.PlayerUniqueID,
+				},
+				OutputType:     pk.OutputType,
+				SuccessCount:   pk.SuccessCount,
+				OutputMessages: outputMessages,
+				DataSet:        pk.DataSet,
+			}
 		case *packet.ClientCacheStatus:
 			pk.Enabled = false // TODO: enable when chunk translation is not broken
 		case *packet.SetActorMotion:
@@ -766,6 +817,13 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 		switch pk := pk.(type) {
 		case *packet.ClientCacheStatus:
 			pk.Enabled = false // TODO: enable when chunk translation is not broken
+		case *legacypacket.CommandRequest:
+			pks[pkIndex] = &packet.CommandRequest{
+				CommandLine:   pk.CommandLine,
+				CommandOrigin: protocol.CommandOrigin(pk.CommandOrigin),
+				Internal:      pk.Internal,
+				Version:       pk.Version,
+			}
 		case *legacypacket.SetActorMotion:
 			pks[pkIndex] = &packet.SetActorMotion{
 				EntityRuntimeID: pk.EntityRuntimeID,

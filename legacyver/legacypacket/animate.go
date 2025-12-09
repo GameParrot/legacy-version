@@ -20,6 +20,8 @@ type Animate struct {
 	Data float32
 	// RowingTime is the time for rowing actions.
 	RowingTime float32
+
+	SwingSource protocol.Optional[string]
 }
 
 // ID ...
@@ -39,5 +41,9 @@ func (pk *Animate) Marshal(io protocol.IO) {
 		if pk.ActionType&0x80 != 0 {
 			io.Float32(&pk.RowingTime)
 		}
+	}
+
+	if proto.IsProtoGTE(io, proto.ID898) {
+		protocol.OptionalFunc(io, &pk.SwingSource, io.String)
 	}
 }

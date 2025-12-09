@@ -29,7 +29,8 @@ type MobEffect struct {
 	// removed automatically client-side.
 	Duration int32
 	// Tick is the server tick at which the packet was sent. It is used in relation to CorrectPlayerMovePrediction.
-	Tick uint64
+	Tick    uint64
+	Ambient bool
 }
 
 // ID ...
@@ -50,5 +51,8 @@ func (pk *MobEffect) Marshal(io protocol.IO) {
 		} else {
 			io.Uint64(&pk.Tick)
 		}
+	}
+	if proto.IsProtoGTE(io, proto.ID898) {
+		io.Bool(&pk.Ambient)
 	}
 }
