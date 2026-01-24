@@ -205,7 +205,12 @@ type CommandOutputMessage struct {
 
 // Marshal encodes/decodes a CommandOutputMessage.
 func (x *CommandOutputMessage) Marshal(r protocol.IO) {
-	r.String(&x.Message)
-	r.Bool(&x.Success)
+	if IsProtoGTE(r, ID898) {
+		r.String(&x.Message)
+		r.Bool(&x.Success)
+	} else {
+		r.Bool(&x.Success)
+		r.String(&x.Message)
+	}
 	protocol.FuncSlice(r, &x.Parameters, r.String)
 }

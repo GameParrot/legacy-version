@@ -139,6 +139,8 @@ func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packe
 		return func() packet.Packet { return &legacypacket.GameRulesChanged{} }
 	case packet.IDAnimate:
 		return func() packet.Packet { return &legacypacket.Animate{} }
+	case packet.IDServerBoundDiagnostics:
+		return func() packet.Packet { return &legacypacket.ServerBoundDiagnostics{} }
 	default:
 		return cur
 	}
@@ -685,6 +687,9 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				ShouldTrigger:         pk.ShouldTrigger,
 				Waterlogged:           pk.Waterlogged,
 			}
+		case *packet.ServerBoundDiagnostics:
+			newPk := legacypacket.ServerBoundDiagnostics(*pk)
+			pks[pkIndex] = &newPk
 		case *packet.BossEvent:
 			pks[pkIndex] = &legacypacket.BossEvent{
 				BossEntityUniqueID:   pk.BossEntityUniqueID,
@@ -1072,6 +1077,10 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 				Message:                 pk.Message,
 				FilteredMessage:         pk.FilteredMessage,
 			}
+		case *legacypacket.ServerBoundDiagnostics:
+			newPk := packet.ServerBoundDiagnostics(*pk)
+			pks[pkIndex] = &newPk
+
 		case *legacypacket.EditorNetwork:
 			pks[pkIndex] = &packet.EditorNetwork{
 				RouteToManager: pk.RouteToManager,

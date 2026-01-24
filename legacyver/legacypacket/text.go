@@ -74,32 +74,38 @@ func (pk *Text) Marshal(io protocol.IO) {
 
 		switch categoryType {
 		case 1:
-			s := "chat"
-			io.String(&s)
-			s = "whisper"
-			io.String(&s)
-			s = "announcement"
-			io.String(&s)
+			if proto.IsProtoLT(io, proto.ID924) {
+				s := "chat"
+				io.String(&s)
+				s = "whisper"
+				io.String(&s)
+				s = "announcement"
+				io.String(&s)
+			}
 		case 0:
-			s := "raw"
-			io.String(&s)
-			s = "tip"
-			io.String(&s)
-			s = "systemMessage"
-			io.String(&s)
-			s = "textObjectWhisper"
-			io.String(&s)
-			s = "textObjectAnnouncement"
-			io.String(&s)
-			s = "textObject"
-			io.String(&s)
+			if proto.IsProtoLT(io, proto.ID924) {
+				s := "raw"
+				io.String(&s)
+				s = "tip"
+				io.String(&s)
+				s = "systemMessage"
+				io.String(&s)
+				s = "textObjectWhisper"
+				io.String(&s)
+				s = "textObjectAnnouncement"
+				io.String(&s)
+				s = "textObject"
+				io.String(&s)
+			}
 		case 2:
-			s := "translate"
-			io.String(&s)
-			s = "popup"
-			io.String(&s)
-			s = "jukeboxPopup"
-			io.String(&s)
+			if proto.IsProtoLT(io, proto.ID924) {
+				s := "translate"
+				io.String(&s)
+				s = "popup"
+				io.String(&s)
+				s = "jukeboxPopup"
+				io.String(&s)
+			}
 		}
 
 		io.Uint8(&pk.TextType)

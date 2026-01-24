@@ -242,6 +242,7 @@ type StartGame struct {
 	TickDeathSystemsEnabled bool
 	// ServerAuthoritativeSound is currently unknown as to what it does.
 	ServerAuthoritativeSound bool
+	HasJoinInformation       bool
 }
 
 // ID ...
@@ -309,7 +310,7 @@ func (pk *StartGame) Marshal(io protocol.IO) {
 	io.Bool(&pk.ForceExperimentalGameplay)
 	io.Uint8(&pk.ChatRestrictionLevel)
 	io.Bool(&pk.DisablePlayerInteractions)
-	if proto.IsProtoGTE(io, proto.ID685) {
+	if proto.IsProtoGTE(io, proto.ID685) && proto.IsProtoLT(io, proto.ID924) {
 		io.String(&pk.ServerID)
 		io.String(&pk.WorldID)
 		io.String(&pk.ScenarioID)
@@ -342,4 +343,11 @@ func (pk *StartGame) Marshal(io protocol.IO) {
 		io.Bool(&pk.TickDeathSystemsEnabled)
 	}
 	io.Bool(&pk.ServerAuthoritativeSound)
+	if proto.IsProtoGTE(io, proto.ID924) {
+		io.Bool(&pk.HasJoinInformation)
+		io.String(&pk.ServerID)
+		io.String(&pk.ScenarioID)
+		io.String(&pk.WorldID)
+		io.String(&pk.OwnerID)
+	}
 }
