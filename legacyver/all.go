@@ -8,6 +8,7 @@ import (
 // must be set to true if you're using Dragonfly.
 func All() []minecraft.Protocol {
 	return []minecraft.Protocol{
+		New924(),
 		New898(),
 		New860(),
 		New844(),
