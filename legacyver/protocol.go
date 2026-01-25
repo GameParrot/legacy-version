@@ -756,7 +756,6 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				ActionType:      pk.ActionType,
 				EntityRuntimeID: pk.EntityRuntimeID,
 				Data:            pk.Data,
-				SwingSource:     protocol.Option(swingSourceToString(pk.SwingSource)),
 			}
 		case *packet.AvailableCommands:
 			commands := make([]proto.Command, len(pk.Commands))
