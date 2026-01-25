@@ -74,22 +74,24 @@ func (pk *Text) Marshal(io protocol.IO) {
 		}
 		io.Uint8(&categoryType)
 		io.Uint8(&pk.TextType)
-		switch categoryType {
-		case packet.TextCategoryMessageOnly:
-			io.StringConst("raw")
-			io.StringConst("tip")
-			io.StringConst("systemMessage")
-			io.StringConst("textObjectWhisper")
-			io.StringConst("textObjectAnnouncement")
-			io.StringConst("textObject")
-		case packet.TextCategoryAuthoredMessage:
-			io.StringConst("chat")
-			io.StringConst("whisper")
-			io.StringConst("announcement")
-		default:
-			io.StringConst("translate")
-			io.StringConst("popup")
-			io.StringConst("jukeboxPopup")
+		if proto.IsProtoLT(io, proto.ID924) {
+			switch categoryType {
+			case packet.TextCategoryMessageOnly:
+				io.StringConst("raw")
+				io.StringConst("tip")
+				io.StringConst("systemMessage")
+				io.StringConst("textObjectWhisper")
+				io.StringConst("textObjectAnnouncement")
+				io.StringConst("textObject")
+			case packet.TextCategoryAuthoredMessage:
+				io.StringConst("chat")
+				io.StringConst("whisper")
+				io.StringConst("announcement")
+			default:
+				io.StringConst("translate")
+				io.StringConst("popup")
+				io.StringConst("jukeboxPopup")
+			}
 		}
 	}
 	switch pk.TextType {

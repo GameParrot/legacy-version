@@ -143,6 +143,8 @@ func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packe
 		return func() packet.Packet { return &legacypacket.Event{} }
 	case packet.IDInteract:
 		return func() packet.Packet { return &legacypacket.Interact{} }
+	case packet.IDServerBoundDiagnostics:
+		return func() packet.Packet { return &legacypacket.ServerBoundDiagnostics{} }
 	default:
 		return cur
 	}
@@ -651,6 +653,9 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				Presets:    pk.Presets,
 				Operation:  pk.Operation,
 			}
+		case *packet.ServerBoundDiagnostics:
+			newPk := legacypacket.ServerBoundDiagnostics(*pk)
+			pks[pkIndex] = &newPk
 		case *packet.CommandBlockUpdate:
 			pks[pkIndex] = &legacypacket.CommandBlockUpdate{
 				Block:                   pk.Block,
@@ -1076,6 +1081,9 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 			pks[pkIndex] = &packet.PlayerArmourDamage{
 				List: pk.List,
 			}
+		case *legacypacket.ServerBoundDiagnostics:
+			newPk := packet.ServerBoundDiagnostics(*pk)
+			pks[pkIndex] = &newPk
 		case *legacypacket.SetTitle:
 			pks[pkIndex] = &packet.SetTitle{
 				ActionType:       pk.ActionType,
