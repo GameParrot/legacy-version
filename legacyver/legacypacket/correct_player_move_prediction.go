@@ -21,6 +21,7 @@ type CorrectPlayerMovePrediction struct {
 	Delta mgl32.Vec3
 	// Rotation is the rotation of the player at the tick written in the field below. It is only included if
 	// PredictionType is PredictionTypeVehicle.
+	// NOTE: As of 1.21.100, this field is also used for player rotations, and is not only set for vehicles.
 	Rotation mgl32.Vec2
 	// VehicleAngularVelocity is the angular velocity of the vehicle that the rider is riding.
 	VehicleAngularVelocity protocol.Optional[float32]
@@ -41,17 +42,13 @@ func (pk *CorrectPlayerMovePrediction) Marshal(io protocol.IO) {
 	}
 	io.Vec3(&pk.Position)
 	io.Vec3(&pk.Delta)
-	if proto.IsProtoGTE(io, proto.ID671) && proto.IsProtoLT(io, proto.ID827) {
-		if pk.PredictionType == packet.PredictionTypeVehicle {
-			io.Vec2(&pk.Rotation)
-			if proto.IsProtoGTE(io, proto.ID712) {
-				protocol.OptionalFunc(io, &pk.VehicleAngularVelocity, io.Float32)
-			}
-		}
-	}
-	if proto.IsProtoGTE(io, proto.ID827) {
+	if (proto.IsProtoGTE(io, proto.ID671) && proto.IsProtoLT(io, proto.ID827) && pk.PredictionType == packet.PredictionTypeVehicle) ||
+		proto.IsProtoGTE(io, proto.ID827) {
+
 		io.Vec2(&pk.Rotation)
-		protocol.OptionalFunc(io, &pk.VehicleAngularVelocity, io.Float32)
+		if proto.IsProtoGTE(io, proto.ID712) {
+			protocol.OptionalFunc(io, &pk.VehicleAngularVelocity, io.Float32)
+		}
 	}
 	io.Bool(&pk.OnGround)
 	io.Varuint64(&pk.Tick)

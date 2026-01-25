@@ -50,7 +50,7 @@ type Text struct {
 	PlatformChatID string
 	// FilteredMessage is a filtered version of Message with all the profanity removed. The client will use
 	// this over Message if this field is not empty and they have the "Filter Profanity" setting enabled.
-	FilteredMessage string
+	FilteredMessage protocol.Optional[string]
 }
 
 // ID ...
@@ -59,8 +59,22 @@ func (*Text) ID() uint32 {
 }
 
 func (pk *Text) Marshal(io protocol.IO) {
-	io.Uint8(&pk.TextType)
+	if proto.IsProtoLT(io, proto.ID898) {
+		io.Uint8(&pk.TextType)
+	}
 	io.Bool(&pk.NeedsTranslation)
+	if proto.IsProtoGTE(io, proto.ID898) {
+		var categoryType uint8
+		if pk.TextType == TextTypeRaw || pk.TextType == TextTypeTip || pk.TextType == TextTypeSystem || pk.TextType == TextTypeObjectWhisper || pk.TextType == TextTypeObjectAnnouncement || pk.TextType == TextTypeObject {
+			categoryType = packet.TextCategoryMessageOnly
+		} else if pk.TextType == TextTypeChat || pk.TextType == TextTypeWhisper || pk.TextType == TextTypeAnnouncement {
+			categoryType = packet.TextCategoryAuthoredMessage
+		} else {
+			categoryType = packet.TextCategoryMessageWithParameters
+		}
+		io.Uint8(&categoryType)
+		io.Uint8(&pk.TextType)
+	}
 	switch pk.TextType {
 	case TextTypeChat, TextTypeWhisper, TextTypeAnnouncement:
 		io.String(&pk.SourceName)
@@ -71,9 +85,24 @@ func (pk *Text) Marshal(io protocol.IO) {
 		io.String(&pk.Message)
 		protocol.FuncSlice(io, &pk.Parameters, io.String)
 	}
+	if proto.IsProtoGTE(io, proto.ID898) {
+		if len(pk.Message) == 0 {
+			io.InvalidValue(pk.Message, "message", "string cannot be empty")
+		}
+	}
 	io.String(&pk.XUID)
 	io.String(&pk.PlatformChatID)
 	if proto.IsProtoGTE(io, proto.ID685) {
-		io.String(&pk.FilteredMessage)
+		if proto.IsProtoGTE(io, proto.ID898) {
+			protocol.OptionalFunc(io, &pk.FilteredMessage, io.String)
+		} else {
+			v, _ := pk.FilteredMessage.Value()
+			io.String(&v)
+			if v != "" {
+				pk.FilteredMessage = protocol.Option(v)
+			} else {
+				pk.FilteredMessage = protocol.Optional[string]{}
+			}
+		}
 	}
 }

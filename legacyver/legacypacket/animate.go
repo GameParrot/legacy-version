@@ -11,15 +11,16 @@ import (
 type Animate struct {
 	// ActionType is the ID of the animation action to execute. It is one of the action type constants that
 	// may be found above.
-	ActionType int32
+	ActionType uint8
 	// EntityRuntimeID is the runtime ID of the player that the animation should be played upon. The runtime
 	// ID is unique for each world session, and entities are generally identified in packets using this
 	// runtime ID.
 	EntityRuntimeID uint64
 	// Data ...
 	Data float32
-	// RowingTime is the time for rowing actions.
-	RowingTime float32
+	// SwingSource is the source for swing actions. It is one of the action type constants that
+	// may be found above.
+	SwingSource protocol.Optional[string]
 }
 
 // ID ...
@@ -28,16 +29,18 @@ func (*Animate) ID() uint32 {
 }
 
 func (pk *Animate) Marshal(io protocol.IO) {
-	io.Varint32(&pk.ActionType)
-	io.Varuint64(&pk.EntityRuntimeID)
-	if proto.IsProtoGTE(io, proto.ID859) {
-		io.Float32(&pk.Data)
-		if pk.ActionType == packet.AnimateActionRowLeft || pk.ActionType == packet.AnimateActionRowRight {
-			io.Float32(&pk.RowingTime)
-		}
+	if proto.IsProtoGTE(io, proto.ID898) {
+		io.Uint8(&pk.ActionType)
 	} else {
-		if pk.ActionType&0x80 != 0 {
-			io.Float32(&pk.RowingTime)
-		}
+		v := int32(pk.ActionType)
+		io.Varint32(&v)
+		pk.ActionType = uint8(v)
+	}
+	io.Varuint64(&pk.EntityRuntimeID)
+	if proto.IsProtoGTE(io, proto.ID859) || (pk.ActionType == 128 || pk.ActionType == 127) {
+		io.Float32(&pk.Data)
+	}
+	if proto.IsProtoGTE(io, proto.ID898) {
+		protocol.OptionalFunc(io, &pk.SwingSource, io.String)
 	}
 }

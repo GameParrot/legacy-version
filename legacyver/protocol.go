@@ -31,6 +31,8 @@ func init() {
 
 func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packet {
 	switch pid {
+	case packet.IDDimensionData:
+		return func() packet.Packet { return &legacypacket.DimensionData{} }
 	case packet.IDCameraAimAssist:
 		return func() packet.Packet { return &legacypacket.CameraAimAssist{} }
 	case packet.IDCameraPresets:
@@ -131,6 +133,16 @@ func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packe
 		return func() packet.Packet { return &legacypacket.GameRulesChanged{} }
 	case packet.IDAnimate:
 		return func() packet.Packet { return &legacypacket.Animate{} }
+	case packet.IDAvailableCommands:
+		return func() packet.Packet { return &legacypacket.AvailableCommands{} }
+	case packet.IDCommandOutput:
+		return func() packet.Packet { return &legacypacket.CommandOutput{} }
+	case packet.IDCommandRequest:
+		return func() packet.Packet { return &legacypacket.CommandRequest{} }
+	case packet.IDEvent:
+		return func() packet.Packet { return &legacypacket.Event{} }
+	case packet.IDInteract:
+		return func() packet.Packet { return &legacypacket.Interact{} }
 	default:
 		return cur
 	}
@@ -173,10 +185,16 @@ func (p *Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) []p
 }
 
 func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) []packet.Packet {
+	translator, ok := p.blockTranslator.(*DefaultBlockTranslator)
+	if !ok {
+		return pks
+	}
 	for pkIndex, pk := range pks {
 		switch pk := pk.(type) {
+		case *packet.DimensionData:
+			translator.dimensionDefinitions = pk.Definitions
 		case *packet.ClientCacheStatus:
-			pk.Enabled = false // TODO: enable when chunk translation is not broken
+			// pk.Enabled = false // TODO: enable when chunk translation is not broken
 		case *packet.SetActorMotion:
 			pks[pkIndex] = &legacypacket.SetActorMotion{
 				EntityRuntimeID: pk.EntityRuntimeID,
@@ -186,7 +204,6 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 		case *packet.ResourcePackStack:
 			pks[pkIndex] = &legacypacket.ResourcePackStack{
 				TexturePackRequired:          pk.TexturePackRequired,
-				BehaviourPacks:               pk.BehaviourPacks,
 				TexturePacks:                 pk.TexturePacks,
 				BaseGameVersion:              pk.BaseGameVersion,
 				Experiments:                  pk.Experiments,
@@ -289,6 +306,7 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				Particles:       pk.Particles,
 				Duration:        pk.Duration,
 				Tick:            pk.Tick,
+				Ambient:         pk.Ambient,
 			}
 		case *packet.CameraAimAssist:
 			pks[pkIndex] = &legacypacket.CameraAimAssist{
@@ -397,6 +415,7 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				DetachFromEntity: pk.DetachFromEntity,
 			}
 		case *packet.ChangeDimension:
+			translator.currentDimension = pk.Dimension
 			pks[pkIndex] = &legacypacket.ChangeDimension{
 				Dimension:       pk.Dimension,
 				Position:        pk.Position,
@@ -502,12 +521,13 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				ClearRecipes:                 pk.ClearRecipes,
 			}
 		case *packet.StartGame:
+			translator.currentDimension = pk.Dimension
 			// Adjust game version
 			pk.GameVersion = p.ver
 			pk.BaseGameVersion = p.ver
 
-			items := make([]proto.LegacyItemRegistryEntry, len(conn.GameData().Items))
-			for i, it := range conn.GameData().Items {
+			items := make([]proto.LegacyItemRegistryEntry, len(p.Items))
+			for i, it := range p.Items {
 				items[i] = (&proto.LegacyItemRegistryEntry{}).FromLatest(it)
 			}
 
@@ -590,7 +610,6 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				ScenarioID:                     pk.ScenarioID,
 				OwnerID:                        pk.OwnerID,
 				UseBlockNetworkIDHashes:        pk.UseBlockNetworkIDHashes,
-				TickDeathSystemsEnabled:        pk.TickDeathSystemsEnabled,
 				ServerAuthoritativeSound:       pk.ServerAuthoritativeSound,
 			}
 		case *packet.CodeBuilderSource:
@@ -600,6 +619,7 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				CodeStatus: pk.CodeStatus,
 			}
 		case *packet.ItemRegistry:
+			p.Items = pk.Items
 			items := make([]proto.ItemEntry, len(pk.Items))
 			for i, it := range pk.Items {
 				items[i] = (&proto.ItemEntry{}).FromLatest(it)
@@ -614,10 +634,7 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 					return []packet.Packet{}
 				}
 			}
-
-			pks[pkIndex] = &legacypacket.ItemRegistry{
-				Items: items,
-			}
+			pks[pkIndex] = &legacypacket.ItemRegistry{Items: items}
 		case *packet.StructureBlockUpdate:
 			pks[pkIndex] = &legacypacket.StructureBlockUpdate{
 				Position:              pk.Position,
@@ -682,10 +699,7 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 		case *packet.PlayerSkin:
 			pk.Skin.GeometryDataEngineVersion = []byte(p.Ver())
 		case *packet.ClientMovementPredictionSync:
-			actorFlags := pk.ActorFlags
-			if p.ID() < proto.ID786 {
-				actorFlags = fitBitset(actorFlags, 120)
-			}
+			actorFlags := fitBitset(pk.ActorFlags, proto.EntityDataFlagsLength(p.ID()))
 			pks[pkIndex] = &legacypacket.ClientMovementPredictionSync{
 				ActorFlags:              actorFlags,
 				BoundingBoxScale:        pk.BoundingBoxScale,
@@ -753,7 +767,61 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				ActionType:      pk.ActionType,
 				EntityRuntimeID: pk.EntityRuntimeID,
 				Data:            pk.Data,
-				RowingTime:      pk.RowingTime,
+				SwingSource:     protocol.Option(swingSourceToString(pk.SwingSource)),
+			}
+		case *packet.AvailableCommands:
+			commands := make([]proto.Command, len(pk.Commands))
+			for i, c := range pk.Commands {
+				commands[i] = (&proto.Command{}).FromLatest(c)
+			}
+			enums := make([]proto.CommandEnum, len(pk.Enums))
+			for i, e := range pk.Enums {
+				enums[i] = (&proto.CommandEnum{}).FromLatest(e)
+			}
+			chainedSubcommands := make([]proto.ChainedSubcommand, len(pk.ChainedSubcommands))
+			for i, c := range pk.ChainedSubcommands {
+				chainedSubcommands[i] = (&proto.ChainedSubcommand{}).FromLatest(c)
+			}
+			pks[pkIndex] = &legacypacket.AvailableCommands{
+				EnumValues:              pk.EnumValues,
+				ChainedSubcommandValues: pk.ChainedSubcommandValues,
+				Suffixes:                pk.Suffixes,
+				Enums:                   enums,
+				ChainedSubcommands:      chainedSubcommands,
+				Commands:                commands,
+				DynamicEnums:            pk.DynamicEnums,
+				Constraints:             pk.Constraints,
+			}
+		case *packet.CommandOutput:
+			outputMessages := make([]proto.CommandOutputMessage, len(pk.OutputMessages))
+			for i, outputMessage := range pk.OutputMessages {
+				outputMessages[i] = (&proto.CommandOutputMessage{}).FromLatest(outputMessage)
+			}
+			pks[pkIndex] = &legacypacket.CommandOutput{
+				CommandOrigin:  pk.CommandOrigin,
+				OutputType:     legacypacket.LatestCommandOutputType(pk.OutputType),
+				SuccessCount:   pk.SuccessCount,
+				OutputMessages: outputMessages,
+				DataSet:        pk.DataSet,
+			}
+		case *packet.CommandRequest:
+			pks[pkIndex] = &legacypacket.CommandRequest{
+				CommandLine:   pk.CommandLine,
+				CommandOrigin: pk.CommandOrigin,
+				Internal:      pk.Internal,
+				Version:       pk.Version,
+			}
+		case *packet.Event:
+			pks[pkIndex] = &legacypacket.Event{
+				EntityRuntimeID: pk.EntityRuntimeID,
+				UsePlayerID:     pk.UsePlayerID,
+				Event:           pk.Event,
+			}
+		case *packet.Interact:
+			pks[pkIndex] = &legacypacket.Interact{
+				ActionType:            pk.ActionType,
+				TargetEntityRuntimeID: pk.TargetEntityRuntimeID,
+				Position:              pk.Position,
 			}
 		}
 	}
@@ -765,7 +833,7 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 	for pkIndex, pk := range pks {
 		switch pk := pk.(type) {
 		case *packet.ClientCacheStatus:
-			pk.Enabled = false // TODO: enable when chunk translation is not broken
+			// pk.Enabled = false // TODO: enable when chunk translation is not broken
 		case *legacypacket.SetActorMotion:
 			pks[pkIndex] = &packet.SetActorMotion{
 				EntityRuntimeID: pk.EntityRuntimeID,
@@ -775,7 +843,6 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 		case *legacypacket.ResourcePackStack:
 			pks[pkIndex] = &packet.ResourcePackStack{
 				TexturePackRequired:          pk.TexturePackRequired,
-				BehaviourPacks:               pk.BehaviourPacks,
 				TexturePacks:                 pk.TexturePacks,
 				BaseGameVersion:              pk.BaseGameVersion,
 				Experiments:                  pk.Experiments,
@@ -875,6 +942,7 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 				Particles:       pk.Particles,
 				Duration:        pk.Duration,
 				Tick:            pk.Tick,
+				Ambient:         pk.Ambient,
 			}
 		case *legacypacket.CameraAimAssist:
 			pks[pkIndex] = &packet.CameraAimAssist{
@@ -1166,7 +1234,6 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 				ScenarioID:                     pk.ScenarioID,
 				OwnerID:                        pk.OwnerID,
 				UseBlockNetworkIDHashes:        pk.UseBlockNetworkIDHashes,
-				TickDeathSystemsEnabled:        pk.TickDeathSystemsEnabled,
 				ServerAuthoritativeSound:       pk.ServerAuthoritativeSound,
 			}
 		case *legacypacket.CodeBuilderSource:
@@ -1299,13 +1366,112 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 				GameRules: pk.GameRules,
 			}
 		case *legacypacket.Animate:
+			newSwingSource := packet.AnimateSwingSourceNone
+			source, _ := pk.SwingSource.Value()
+			switch source {
+			case "build":
+				newSwingSource = packet.AnimateSwingSourceBuild
+			case "mine":
+				newSwingSource = packet.AnimateSwingSourceMine
+			case "interact":
+				newSwingSource = packet.AnimateSwingSourceInteract
+			case "attack":
+				newSwingSource = packet.AnimateSwingSourceAttack
+			case "useitem":
+				newSwingSource = packet.AnimateSwingSourceUseItem
+			case "throwitem":
+				newSwingSource = packet.AnimateSwingSourceThrowItem
+			case "dropitem":
+				newSwingSource = packet.AnimateSwingSourceDropItem
+			case "event":
+				newSwingSource = packet.AnimateSwingSourceEvent
+			}
 			pks[pkIndex] = &packet.Animate{
 				ActionType:      pk.ActionType,
 				EntityRuntimeID: pk.EntityRuntimeID,
 				Data:            pk.Data,
-				RowingTime:      pk.RowingTime,
+				SwingSource:     uint8(newSwingSource),
+			}
+		case *legacypacket.AvailableCommands:
+			enums := make([]protocol.CommandEnum, len(pk.Enums))
+			for i, e := range pk.Enums {
+				enums[i] = e.ToLatest()
+			}
+			chainedSubcommands := make([]protocol.ChainedSubcommand, len(pk.ChainedSubcommands))
+			for i, c := range pk.ChainedSubcommands {
+				chainedSubcommands[i] = c.ToLatest()
+			}
+			commands := make([]protocol.Command, len(pk.Commands))
+			for i, c := range pk.Commands {
+				commands[i] = c.ToLatest()
+			}
+			pks[pkIndex] = &packet.AvailableCommands{
+				EnumValues:              pk.EnumValues,
+				ChainedSubcommandValues: pk.ChainedSubcommandValues,
+				Suffixes:                pk.Suffixes,
+				Enums:                   enums,
+				ChainedSubcommands:      chainedSubcommands,
+				Commands:                commands,
+				DynamicEnums:            pk.DynamicEnums,
+				Constraints:             pk.Constraints,
+			}
+		case *legacypacket.CommandOutput:
+			outputMessages := make([]protocol.CommandOutputMessage, len(pk.OutputMessages))
+			for i, outputMessage := range pk.OutputMessages {
+				outputMessages[i] = outputMessage.ToLatest()
+			}
+			pks[pkIndex] = &packet.CommandOutput{
+				CommandOrigin:  pk.CommandOrigin,
+				OutputType:     legacypacket.LegacyCommandOutputType(pk.OutputType),
+				SuccessCount:   pk.SuccessCount,
+				OutputMessages: outputMessages,
+				DataSet:        pk.DataSet,
+			}
+		case *legacypacket.CommandRequest:
+			pks[pkIndex] = &packet.CommandRequest{
+				CommandLine:   pk.CommandLine,
+				CommandOrigin: pk.CommandOrigin,
+				Internal:      pk.Internal,
+				Version:       pk.Version,
+			}
+		case *legacypacket.Event:
+			pks[pkIndex] = &packet.Event{
+				EntityRuntimeID: pk.EntityRuntimeID,
+				UsePlayerID:     pk.UsePlayerID,
+				Event:           pk.Event,
+			}
+		case *legacypacket.Interact:
+			pks[pkIndex] = &packet.Interact{
+				ActionType:            pk.ActionType,
+				TargetEntityRuntimeID: pk.TargetEntityRuntimeID,
+				Position:              pk.Position,
 			}
 		}
 	}
 	return pks
+}
+
+func swingSourceToString(x uint8) string {
+	switch x {
+	case packet.AnimateSwingSourceNone:
+		return "none"
+	case packet.AnimateSwingSourceBuild:
+		return "build"
+	case packet.AnimateSwingSourceMine:
+		return "mine"
+	case packet.AnimateSwingSourceInteract:
+		return "interact"
+	case packet.AnimateSwingSourceAttack:
+		return "attack"
+	case packet.AnimateSwingSourceUseItem:
+		return "useitem"
+	case packet.AnimateSwingSourceThrowItem:
+		return "throwitem"
+	case packet.AnimateSwingSourceDropItem:
+		return "dropitem"
+	case packet.AnimateSwingSourceEvent:
+		return "event"
+	default:
+		return "unknown"
+	}
 }

@@ -3,6 +3,7 @@ package proto
 import "github.com/sandertv/gophertunnel/minecraft/protocol"
 
 const (
+	ID898 = 898 // v1.21.130
 	ID860 = 860 // v1.21.124
 	ID859 = 859 // v1.21.120
 	ID844 = 844 // v1.21.110

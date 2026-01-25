@@ -30,6 +30,8 @@ type MobEffect struct {
 	Duration int32
 	// Tick is the server tick at which the packet was sent. It is used in relation to CorrectPlayerMovePrediction.
 	Tick uint64
+	// Ambient specifies if the effect is ambient. If set to false, it will not get treated as an ambient effect.
+	Ambient bool
 }
 
 // ID ...
@@ -49,6 +51,10 @@ func (pk *MobEffect) Marshal(io protocol.IO) {
 			io.Varuint64(&pk.Tick)
 		} else {
 			io.Uint64(&pk.Tick)
+		}
+
+		if proto.IsProtoGTE(io, proto.ID898) {
+			io.Bool(&pk.Ambient)
 		}
 	}
 }

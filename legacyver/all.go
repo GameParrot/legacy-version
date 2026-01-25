@@ -9,6 +9,7 @@ import (
 func All() []minecraft.Protocol {
 	return []minecraft.Protocol{
 		New860(),
+		New859(),
 		New844(),
 		New827(),
 		New819(),
