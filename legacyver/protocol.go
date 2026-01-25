@@ -185,14 +185,8 @@ func (p *Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) []p
 }
 
 func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) []packet.Packet {
-	translator, ok := p.blockTranslator.(*DefaultBlockTranslator)
-	if !ok {
-		return pks
-	}
 	for pkIndex, pk := range pks {
 		switch pk := pk.(type) {
-		case *packet.DimensionData:
-			translator.dimensionDefinitions = pk.Definitions
 		case *packet.ClientCacheStatus:
 			// pk.Enabled = false // TODO: enable when chunk translation is not broken
 		case *packet.SetActorMotion:
@@ -414,14 +408,6 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				AttachToEntity:   pk.AttachToEntity,
 				DetachFromEntity: pk.DetachFromEntity,
 			}
-		case *packet.ChangeDimension:
-			translator.currentDimension = pk.Dimension
-			pks[pkIndex] = &legacypacket.ChangeDimension{
-				Dimension:       pk.Dimension,
-				Position:        pk.Position,
-				Respawn:         pk.Respawn,
-				LoadingScreenID: pk.LoadingScreenID,
-			}
 		case *packet.CorrectPlayerMovePrediction:
 			pks[pkIndex] = &legacypacket.CorrectPlayerMovePrediction{
 				PredictionType:         pk.PredictionType,
@@ -521,13 +507,12 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				ClearRecipes:                 pk.ClearRecipes,
 			}
 		case *packet.StartGame:
-			translator.currentDimension = pk.Dimension
 			// Adjust game version
 			pk.GameVersion = p.ver
 			pk.BaseGameVersion = p.ver
 
-			items := make([]proto.LegacyItemRegistryEntry, len(p.Items))
-			for i, it := range p.Items {
+			items := make([]proto.LegacyItemRegistryEntry, len(conn.GameData().Items))
+			for i, it := range conn.GameData().Items {
 				items[i] = (&proto.LegacyItemRegistryEntry{}).FromLatest(it)
 			}
 
@@ -619,7 +604,6 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				CodeStatus: pk.CodeStatus,
 			}
 		case *packet.ItemRegistry:
-			p.Items = pk.Items
 			items := make([]proto.ItemEntry, len(pk.Items))
 			for i, it := range pk.Items {
 				items[i] = (&proto.ItemEntry{}).FromLatest(it)
