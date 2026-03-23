@@ -29,6 +29,18 @@ func NewReader(r *protocol.Reader, protocolID int32) *Reader {
 func (r *Reader) SetProtocolID(protocolID int32) { r.protocolID = protocolID }
 func (r *Reader) ProtocolID() int32              { return r.protocolID }
 
+func (r *Reader) UBlockPos(x *protocol.BlockPos) {
+	r.Varint32(&x[0])
+	if IsProtoGTE(r, ID944) {
+		r.Varint32(&x[1])
+	} else {
+		var y uint32
+		r.Varuint32(&y)
+		x[1] = int32(y)
+	}
+	r.Varint32(&x[2])
+}
+
 type Writer struct {
 	*protocol.Writer
 
@@ -41,6 +53,17 @@ func NewWriter(w *protocol.Writer, protocolID int32) *Writer {
 
 func (w *Writer) SetProtocolID(protocolID int32) { w.protocolID = protocolID }
 func (w *Writer) ProtocolID() int32              { return w.protocolID }
+
+func (w *Writer) UBlockPos(x *protocol.BlockPos) {
+	w.Varint32(&x[0])
+	if IsProtoGTE(w, ID944) {
+		w.Varint32(&x[1])
+	} else {
+		y := uint32(x[1])
+		w.Varuint32(&y)
+	}
+	w.Varint32(&x[2])
+}
 
 func IsReader(r protocol.IO) bool {
 	_, ok := r.(*Reader)
@@ -93,6 +116,10 @@ func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 	io.Varuint32(&x.BlockRuntimeID)
 	if IsProtoGTE(io, ID712) {
 		io.Varuint32(&x.ClientPrediction)
+		if IsProtoGTE(io, ID944) {
+			var a uint8
+			io.Uint8(&a)
+		}
 	}
 }
 

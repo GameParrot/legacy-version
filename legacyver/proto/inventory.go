@@ -101,6 +101,8 @@ type UseItemTransactionData struct {
 	// ClientPrediction is the client's prediction on the output of the transaction. It is one of the client
 	// prediction found in the constants above.
 	ClientPrediction uint32
+
+	ClientCooldownState byte
 }
 
 func (x *UseItemTransactionData) FromLatest(l *protocol.UseItemTransactionData) *UseItemTransactionData {
@@ -154,5 +156,8 @@ func (x *UseItemTransactionData) Marshal(r protocol.IO) {
 	r.Varuint32(&x.BlockRuntimeID)
 	if IsProtoGTE(r, ID712) {
 		r.Varuint32(&x.ClientPrediction)
+		if IsProtoGTE(r, ID944) {
+			r.Uint8(&x.ClientCooldownState)
+		}
 	}
 }
