@@ -53,7 +53,15 @@ func (pk *ServerBoundDiagnostics) Marshal(io protocol.IO) {
 	io.Float32(&pk.AverageEndFrameTime)
 	io.Float32(&pk.AverageRemainderTimePercent)
 	io.Float32(&pk.AverageUnaccountedTimePercent)
+
+	/*
+		if proto.IsProtoGTE(io, proto.ID924) {
+			protocol.SliceUint32Length(io, &pk.MemoryCategoryValues)
+		}
+	*/
+
 	if proto.IsProtoGTE(io, proto.ID924) {
-		protocol.SliceUint32Length(io, &pk.MemoryCategoryValues)
+		var b []byte
+		io.Bytes(&b)
 	}
 }

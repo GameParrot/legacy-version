@@ -147,6 +147,11 @@ func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packe
 		return func() packet.Packet { return &legacypacket.Interact{} }
 	case packet.IDServerBoundDiagnostics:
 		return func() packet.Packet { return &legacypacket.ServerBoundDiagnostics{} }
+	case packet.IDActorEvent:
+		return func() packet.Packet { return &legacypacket.ActorEvent{} }
+	case packet.IDPlaySound:
+		return func() packet.Packet { return &legacypacket.PlaySound{} }
+
 	default:
 		return cur
 	}
@@ -838,6 +843,19 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 				TargetEntityRuntimeID: pk.TargetEntityRuntimeID,
 				Position:              pk.Position,
 			}
+		case *packet.ActorEvent:
+			pks[pkIndex] = &legacypacket.ActorEvent{
+				EntityRuntimeID: pk.EntityRuntimeID,
+				EventType:       pk.EventType,
+				EventData:       pk.EventData,
+			}
+		case *packet.PlaySound:
+			pks[pkIndex] = &legacypacket.PlaySound{
+				SoundName: pk.SoundName,
+				Position:  pk.Position,
+				Volume:    pk.Volume,
+				Pitch:     pk.Pitch,
+			}
 		}
 	}
 
@@ -1493,6 +1511,19 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, conn *minecraft.Conn) []p
 				ActionType:            pk.ActionType,
 				TargetEntityRuntimeID: pk.TargetEntityRuntimeID,
 				Position:              pk.Position,
+			}
+		case *legacypacket.ActorEvent:
+			pks[pkIndex] = &packet.ActorEvent{
+				EntityRuntimeID: pk.EntityRuntimeID,
+				EventType:       pk.EventType,
+				EventData:       pk.EventData,
+			}
+		case *legacypacket.PlaySound:
+			pks[pkIndex] = &packet.PlaySound{
+				SoundName: pk.SoundName,
+				Position:  pk.Position,
+				Volume:    pk.Volume,
+				Pitch:     pk.Pitch,
 			}
 		}
 	}
