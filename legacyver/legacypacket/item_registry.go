@@ -1,27 +1,21 @@
 package legacypacket
 
 import (
+	"strings"
+
 	"github.com/akmalfairuz/legacy-version/legacyver/proto"
+	"github.com/samber/lo"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-// ItemRegistry is sent by the server to send the client a list of available items and attach client-side
-// components to a custom item. This packet was formerly known as the ItemComponent packet before 1.21.60,
-// which did not include item definitions but only the components.
-type ItemRegistry struct {
-	// Items is a list of all items with their legacy IDs which are available in the game. Failing to send any
-	// of the items that are in the game will crash mobile clients. Any custom components are also attached to
-	// the items in this list.
-	Items []proto.ItemEntry
-}
-
-// ID ...
-func (*ItemRegistry) ID() uint32 {
-	return packet.IDItemRegistry
-}
-
-// Marshal ...
-func (pk *ItemRegistry) Marshal(io protocol.IO) {
-	protocol.Slice(io, &pk.Items)
+func ItemRegistry(io protocol.IO, pk *packet.ItemRegistry) {
+	if proto.IsProtoLT(io, proto.ID776) && proto.IsWriter(io) {
+		items := lo.Filter(pk.Items, func(item protocol.ItemEntry, index int) bool {
+			return !strings.HasPrefix(item.Name, "minecraft:") && item.ComponentBased
+		}) // only custom items here
+		protocol.FuncIOSlice(io, &items, proto.MarshalItemEntry)
+		return
+	}
+	protocol.FuncIOSlice(io, &pk.Items, proto.MarshalItemEntry)
 }

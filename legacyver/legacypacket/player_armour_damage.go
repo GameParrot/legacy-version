@@ -6,19 +6,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-// PlayerArmourDamage is sent by the server to damage the armour of a player. It is a very efficient packet,
-// but generally it's much easier to just send a slot update for the damaged armour.
-type PlayerArmourDamage struct {
-	// List ...
-	List []protocol.PlayerArmourDamageEntry
-}
-
-// ID ...
-func (pk *PlayerArmourDamage) ID() uint32 {
-	return packet.IDPlayerArmourDamage
-}
-
-func (pk *PlayerArmourDamage) Marshal(io protocol.IO) {
+func PlayerArmourDamage(io protocol.IO, pk *packet.PlayerArmourDamage) {
 	if proto.IsProtoLT(io, proto.ID844) {
 		var bitset uint8
 		flags := []uint8{packet.PlayerArmourDamageFlagHelmet, packet.PlayerArmourDamageFlagChestplate, packet.PlayerArmourDamageFlagLeggings, packet.PlayerArmourDamageFlagBoots}

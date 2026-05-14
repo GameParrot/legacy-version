@@ -7,25 +7,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-// Event is sent by the server to send an event with additional data. It is typically sent to the client for
-// telemetry reasons, much like the SimpleEvent packet.
-type Event struct {
-	// EntityRuntimeID is the runtime ID of the player. The runtime ID is unique for each world session, and
-	// entities are generally identified in packets using this runtime ID.
-	EntityRuntimeID int64
-	// UsePlayerID ...
-	// TODO: Figure out what UsePlayerID is for.
-	UsePlayerID bool
-	// Event is the event that is transmitted.
-	Event protocol.Event
-}
-
-// ID ...
-func (*Event) ID() uint32 {
-	return packet.IDEvent
-}
-
-func (pk *Event) Marshal(io protocol.IO) {
+func Event(io protocol.IO, pk *packet.Event) {
 	io.Varint64(&pk.EntityRuntimeID)
 	io.EventType(&pk.Event)
 	if proto.IsProtoGTE(io, proto.ID898) {

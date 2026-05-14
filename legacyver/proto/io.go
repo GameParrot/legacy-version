@@ -58,22 +58,6 @@ func EmptySlice[T any](io protocol.IO, slice *[]T) {
 	}
 }
 
-func TransactionDataType(io protocol.IO, x *InventoryTransactionData) {
-	if IsReader(io) {
-		var transactionType uint32
-		io.Varuint32(&transactionType)
-		if !lookupTransactionData(transactionType, x) {
-			io.UnknownEnumOption(transactionType, "inventory transaction data type")
-		}
-	} else {
-		var id uint32
-		if !lookupTransactionDataType(*x, &id) {
-			io.UnknownEnumOption(fmt.Sprintf("%T", x), "inventory transaction data type")
-		}
-		io.Varuint32(&id)
-	}
-}
-
 func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 	io.Varint32(&x.LegacyRequestID)
 	if x.LegacyRequestID < -1 && (x.LegacyRequestID&1) == 0 {
@@ -111,10 +95,10 @@ func IOStackRequestAction(io protocol.IO, x *protocol.StackRequestAction) {
 		}
 		io.Uint8(&id)
 	}
-	(*x).Marshal(io)
+	MarshalStackRequestAction(io, *x)
 }
 
-func IORecipe(io protocol.IO, recipe *Recipe) {
+func IORecipe(io protocol.IO, recipe *protocol.Recipe) {
 	if IsReader(io) {
 		var recipeType int32
 		io.Varint32(&recipeType)
@@ -122,13 +106,32 @@ func IORecipe(io protocol.IO, recipe *Recipe) {
 			io.UnknownEnumOption(recipeType, "crafting data recipe type")
 			return
 		}
-		(*recipe).Unmarshal(io.(*Reader))
+		UnmarshalRecipe(io.(*protocol.Reader), *recipe)
 	} else {
 		var recipeType int32
 		if !lookupRecipeType(*recipe, &recipeType) {
 			io.UnknownEnumOption(fmt.Sprintf("%T", *recipe), "crafting recipe type")
 		}
 		io.Varint32(&recipeType)
-		(*recipe).Marshal(io.(*Writer))
+		MarshalRecipe(io.(*protocol.Writer), *recipe)
 	}
+}
+
+func IOUBlockPos(io protocol.IO, x *protocol.BlockPos) {
+	io.Varint32(&x[0])
+	if IsProtoGTE(io, ID944) {
+		io.Varint32(&x[1])
+	} else {
+		y := uint32(x[1])
+		io.Varuint32(&y)
+		x[1] = int32(y)
+	}
+	io.Varint32(&x[2])
+}
+
+// FuncIOSliceUint32Length reads/writes a slice of T using a function with a uint32 length prefix.
+func FuncIOSliceUint8Length[T any, S ~*[]T](r protocol.IO, x S, f func(protocol.IO, *T)) {
+	count := uint8(len(*x))
+	r.Uint8(&count)
+	protocol.FuncIOSliceOfLen(r, uint32(count), x, f)
 }
