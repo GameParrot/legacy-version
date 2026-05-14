@@ -129,9 +129,16 @@ func IOUBlockPos(io protocol.IO, x *protocol.BlockPos) {
 	io.Varint32(&x[2])
 }
 
-// FuncIOSliceUint32Length reads/writes a slice of T using a function with a uint32 length prefix.
+// FuncIOSliceUint8Length reads/writes a slice of T using a function with a uint8 length prefix.
 func FuncIOSliceUint8Length[T any, S ~*[]T](r protocol.IO, x S, f func(protocol.IO, *T)) {
 	count := uint8(len(*x))
 	r.Uint8(&count)
+	protocol.FuncIOSliceOfLen(r, uint32(count), x, f)
+}
+
+// FuncIOSliceUint16Length reads/writes a slice of T using a function with a uint16 length prefix.
+func FuncIOSliceUint16Length[T any, S ~*[]T](r protocol.IO, x S, f func(protocol.IO, *T)) {
+	count := uint16(len(*x))
+	r.Uint16(&count)
 	protocol.FuncIOSliceOfLen(r, uint32(count), x, f)
 }

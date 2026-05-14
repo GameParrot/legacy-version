@@ -25,7 +25,7 @@ func ResourcePacksInfo(io protocol.IO, pk *packet.ResourcePacksInfo) {
 		bps := []proto.BehaviourPackInfo{}
 		protocol.SliceUint16Length(io, &bps)
 	}
-	protocol.SliceUint16Length(io, &pk.TexturePacks)
+	proto.FuncIOSliceUint16Length(io, &pk.TexturePacks, proto.MarshalTexturePackInfo)
 	if proto.IsProtoLT(io, proto.ID748) {
 		if proto.IsReader(io) {
 			packURLs := make([]protocol.PackURL, 0)
