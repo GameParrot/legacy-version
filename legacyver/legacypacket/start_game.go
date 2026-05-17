@@ -90,6 +90,8 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 		}
 	}
 	if proto.IsProtoGTE(io, proto.ID998) {
+		gg := int32(0)
+		io.Varint32(&gg)
 		v := false
 		io.Bool(&v)
 	}
