@@ -89,6 +89,10 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 			io.String(&pk.OwnerID)
 		}
 	}
+	if proto.IsProtoGTE(io, proto.ID998) {
+		v := false
+		io.Bool(&v)
+	}
 	io.String(&pk.LevelID)
 	io.String(&pk.WorldName)
 	io.String(&pk.TemplateContentIdentity)
@@ -118,6 +122,10 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 	}
 	io.Bool(&pk.ServerAuthoritativeSound)
 	if proto.IsProtoGTE(io, proto.ID924) {
+		if proto.IsProtoGTE(io, proto.ID998) {
+			v := false
+			io.Bool(&v)
+		}
 		protocol.OptionalFuncIO(io, &pk.ServerJoinInformation, proto.MarshalServerJoinInformation)
 		io.String(&pk.ServerID)
 		io.String(&pk.ScenarioID)
