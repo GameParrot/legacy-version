@@ -89,7 +89,7 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 			io.String(&pk.OwnerID)
 		}
 	}
-	if proto.IsProtoGTE(io, proto.ID998) {
+	if proto.IsProtoGTE(io, proto.ID1001) {
 		gg := int32(0)
 		io.Varint32(&gg)
 		v := false
@@ -124,7 +124,7 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 	}
 	io.Bool(&pk.ServerAuthoritativeSound)
 	if proto.IsProtoGTE(io, proto.ID924) {
-		if proto.IsProtoGTE(io, proto.ID998) {
+		if proto.IsProtoGTE(io, proto.ID1001) {
 			v := false
 			io.Bool(&v)
 		}

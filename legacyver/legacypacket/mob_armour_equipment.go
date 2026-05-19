@@ -8,7 +8,7 @@ import (
 
 func MobArmourEquipment(io protocol.IO, pk *packet.MobArmourEquipment) {
 	io.Varuint64(&pk.EntityRuntimeID)
-	if proto.IsProtoGTE(io, proto.ID998) {
+	if proto.IsProtoGTE(io, proto.ID1001) {
 		io.ItemInstanceNew(&pk.Helmet)
 		io.ItemInstanceNew(&pk.Chestplate)
 		io.ItemInstanceNew(&pk.Leggings)

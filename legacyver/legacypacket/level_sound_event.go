@@ -7,7 +7,7 @@ import (
 )
 
 func LevelSoundEvent(io protocol.IO, pk *packet.LevelSoundEvent) {
-	if proto.IsProtoGTE(io, proto.ID998) {
+	if proto.IsProtoGTE(io, proto.ID1001) {
 		soundType := soundEventToString(pk.SoundType)
 		io.String(&soundType)
 		soundEventFromString(io, &pk.SoundType, soundType)

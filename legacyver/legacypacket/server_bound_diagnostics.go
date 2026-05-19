@@ -21,7 +21,7 @@ func ServerBoundDiagnostics(io protocol.IO, pk *packet.ServerBoundDiagnostics) {
 		if proto.IsProtoGTE(io, proto.ID975) {
 			protocol.Slice(io, &pk.EntityDiagnostics)
 			protocol.Slice(io, &pk.SystemDiagnostics)
-			if proto.IsProtoGTE(io, proto.ID998) {
+			if proto.IsProtoGTE(io, proto.ID1001) {
 				var b []byte
 				io.Bytes(&b)
 			}
