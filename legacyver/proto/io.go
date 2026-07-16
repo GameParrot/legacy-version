@@ -76,7 +76,7 @@ func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 	io.Vec3(&x.ClickedPosition)
 	io.Varuint32(&x.BlockRuntimeID)
 	if IsProtoGTE(io, ID712) {
-		io.Varuint32(&x.ClientPrediction)
+		io.Uint8(&x.ClientPrediction)
 	}
 }
 

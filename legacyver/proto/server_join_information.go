@@ -47,6 +47,21 @@ func MarshalServerJoinInformation(r protocol.IO, x *protocol.ServerJoinInformati
 	protocol.OptionalFuncIO(r, &x.GatheringJoinInfo, MarshalGatheringJoinInfo)
 	if IsProtoGTE(r, ID944) {
 		protocol.OptionalMarshaler(r, &x.StoreEntryPointInfo)
-		protocol.OptionalMarshaler(r, &x.PresenceInfo)
+		protocol.OptionalFuncIO(r, &x.PresenceInfo, MarshalPresenceInfo)
 	}
+}
+
+func MarshalPresenceInfo(r protocol.IO, x *protocol.PresenceInfo) {
+	if IsProtoGTE(r, ID1001) {
+		protocol.OptionalFunc(r, &x.ExperienceName, r.String)
+		protocol.OptionalFunc(r, &x.WorldName, r.String)
+		r.String(&x.RichPresenceID)
+		return
+	}
+	experienceName, _ := x.ExperienceName.Value()
+	r.String(&experienceName)
+	x.ExperienceName = protocol.Option(experienceName)
+	worldName, _ := x.WorldName.Value()
+	r.String(&worldName)
+	x.WorldName = protocol.Option(worldName)
 }

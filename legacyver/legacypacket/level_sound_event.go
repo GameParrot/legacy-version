@@ -7,7 +7,11 @@ import (
 )
 
 func LevelSoundEvent(io protocol.IO, pk *packet.LevelSoundEvent) {
-	io.Varuint32(&pk.SoundType)
+	if proto.IsProtoGTE(io, proto.ID1001) {
+		io.String(&pk.SoundType)
+	} else {
+		legacySoundType(io, &pk.SoundType)
+	}
 	io.Vec3(&pk.Position)
 	io.Varint32(&pk.ExtraData)
 	io.String(&pk.EntityType)

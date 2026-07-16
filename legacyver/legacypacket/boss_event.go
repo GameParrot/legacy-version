@@ -8,7 +8,17 @@ import (
 
 func BossEvent(io protocol.IO, pk *packet.BossEvent) {
 	io.Varint64(&pk.BossEntityUniqueID)
-	io.Varuint32(&pk.EventType)
+	if proto.IsProtoGTE(io, proto.ID1001) {
+		io.Varint64(&pk.PlayerUniqueID)
+		io.Uint8(&pk.EventType)
+		io.String(&pk.BossBarTitle)
+		io.String(&pk.FilteredBossBarTitle)
+		io.Float32(&pk.HealthPercentage)
+		io.Uint8(&pk.Colour)
+		io.Uint8(&pk.Overlay)
+		return
+	}
+	protocol.IntegerFunc(&pk.EventType, io.Varuint32)
 	switch pk.EventType {
 	case packet.BossEventShow:
 		io.String(&pk.BossBarTitle)
@@ -16,9 +26,10 @@ func BossEvent(io protocol.IO, pk *packet.BossEvent) {
 			io.String(&pk.FilteredBossBarTitle)
 		}
 		io.Float32(&pk.HealthPercentage)
-		io.Uint16(&pk.ScreenDarkening)
-		io.Varuint32(&pk.Colour)
-		io.Varuint32(&pk.Overlay)
+		z := uint16(0)
+		io.Uint16(&z)
+		legacyBossEventColour(io, &pk.Colour)
+		protocol.IntegerFunc(&pk.Overlay, io.Varuint32)
 	case packet.BossEventRegisterPlayer, packet.BossEventUnregisterPlayer, packet.BossEventRequest:
 		io.Varint64(&pk.PlayerUniqueID)
 	case packet.BossEventHide:
@@ -31,13 +42,42 @@ func BossEvent(io protocol.IO, pk *packet.BossEvent) {
 			io.String(&pk.FilteredBossBarTitle)
 		}
 	case packet.BossEventAppearanceProperties:
-		io.Uint16(&pk.ScreenDarkening)
-		io.Varuint32(&pk.Colour)
-		io.Varuint32(&pk.Overlay)
+		z := uint16(0)
+		io.Uint16(&z)
+		legacyBossEventColour(io, &pk.Colour)
+		protocol.IntegerFunc(&pk.Overlay, io.Varuint32)
 	case packet.BossEventTexture:
-		io.Varuint32(&pk.Colour)
-		io.Varuint32(&pk.Overlay)
+		legacyBossEventColour(io, &pk.Colour)
+		protocol.IntegerFunc(&pk.Overlay, io.Varuint32)
 	default:
 		io.UnknownEnumOption(pk.EventType, "boss event type")
 	}
+}
+
+func legacyBossEventColour(io protocol.IO, colour *uint8) {
+	if proto.IsReader(io) {
+		var legacyColour uint32
+		io.Varuint32(&legacyColour)
+		switch legacyColour {
+		case 0, 1, 2, 3, 4, 5:
+			*colour = uint8(legacyColour)
+		case 6:
+			*colour = packet.BossEventColourWhite
+		default:
+			io.UnknownEnumOption(legacyColour, "legacy boss event colour")
+		}
+		return
+	}
+	var legacyColour uint32
+	switch *colour {
+	case packet.BossEventColourPink, packet.BossEventColourBlue, packet.BossEventColourRed,
+		packet.BossEventColourGreen, packet.BossEventColourYellow, packet.BossEventColourPurple:
+		legacyColour = uint32(*colour)
+	case packet.BossEventColourWhite:
+		legacyColour = 6
+	default:
+		io.UnknownEnumOption(*colour, "legacy boss event colour")
+		return
+	}
+	io.Varuint32(&legacyColour)
 }

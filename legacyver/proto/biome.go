@@ -49,13 +49,15 @@ func MarshalBiomeChunkGeneration(r protocol.IO, x *protocol.BiomeChunkGeneration
 	protocol.OptionalFunc(r, &x.SurfaceMaterialAdjustments, func(s *[]protocol.BiomeElementData) {
 		protocol.Slice(r, s)
 	})
-	protocol.OptionalMarshaler(r, &x.SurfaceMaterials)
-	r.Bool(&x.HasDefaultOverworldSurface)
-	r.Bool(&x.HasSwampSurface)
-	r.Bool(&x.HasFrozenOceanSurface)
-	r.Bool(&x.HasEndSurface)
-	protocol.OptionalMarshaler(r, &x.MesaSurface)
-	protocol.OptionalMarshaler(r, &x.CappedSurface)
+	if IsProtoLT(r, ID1001) {
+		protocol.OptionalMarshaler(r, &x.SurfaceMaterials)
+		r.Bool(&x.HasDefaultOverworldSurface)
+		r.Bool(&x.HasSwampSurface)
+		r.Bool(&x.HasFrozenOceanSurface)
+		r.Bool(&x.HasEndSurface)
+		protocol.OptionalMarshaler(r, &x.MesaSurface)
+		protocol.OptionalMarshaler(r, &x.CappedSurface)
+	}
 	protocol.OptionalMarshaler(r, &x.OverworldRules)
 	protocol.OptionalMarshaler(r, &x.MultiNoiseRules)
 	protocol.OptionalFunc(r, &x.LegacyRules, func(s *[]protocol.BiomeConditionalTransformation) {
@@ -68,5 +70,9 @@ func MarshalBiomeChunkGeneration(r protocol.IO, x *protocol.BiomeChunkGeneration
 	}
 	if IsProtoGTE(r, ID924) {
 		protocol.OptionalFunc(r, &x.VillageType, r.Uint8)
+	}
+	if IsProtoGTE(r, ID1001) {
+		protocol.OptionalMarshaler(r, &x.SurfaceBuilder)
+		protocol.OptionalMarshaler(r, &x.SubsurfaceBuilder)
 	}
 }

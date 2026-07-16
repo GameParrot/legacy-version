@@ -28,7 +28,74 @@ func MarshalCommand(r protocol.IO, c *protocol.Command) {
 		protocol.FuncSlice(r, &offsets, r.Uint16)
 		c.ChainedSubcommandOffsets = typeconf.SliceIntToSliceInt[uint16, uint32](offsets)
 	}
-	protocol.Slice(r, &c.Overloads)
+	protocol.FuncIOSlice(r, &c.Overloads, MarshalCommandOverload)
+}
+
+func MarshalCommandOverload(r protocol.IO, x *protocol.CommandOverload) {
+	r.Bool(&x.Chaining)
+	protocol.FuncIOSlice(r, &x.Parameters, MarshalCommandParameter)
+}
+
+func MarshalCommandParameter(r protocol.IO, x *protocol.CommandParameter) {
+	r.String(&x.Name)
+	if IsProtoGTE(r, ID1001) {
+		r.Uint32(&x.Type)
+	} else if IsReader(r) {
+		var legacyType uint32
+		r.Uint32(&legacyType)
+		if legacyType&protocol.CommandArgValid != 0 {
+			x.Type = commandArgumentTypeFromLegacy(r, legacyType)
+		} else {
+			x.Type = legacyType
+		}
+	} else {
+		legacyType := x.Type
+		if x.Type&protocol.CommandArgValid != 0 {
+			legacyType = commandArgumentTypeToLegacy(r, x.Type)
+		}
+		r.Uint32(&legacyType)
+	}
+	r.Bool(&x.Optional)
+	r.Uint8(&x.Options)
+}
+
+func commandArgumentTypeToLegacy(r protocol.IO, argumentType uint32) uint32 {
+	flags, base := argumentType&^0xfffff, argumentType&0xfffff
+	switch base {
+	case protocol.CommandArgTypeInt:
+		return flags | 1
+	case protocol.CommandArgTypeFloat:
+		return flags | 3
+	case protocol.CommandArgTypeValue:
+		return flags | 4
+	case protocol.CommandArgTypeWildcardInt, protocol.CommandArgTypeOperator, protocol.CommandArgTypeCompareOperator,
+		protocol.CommandArgTypeTarget, protocol.CommandArgTypeWildcardTarget, protocol.CommandArgTypeFilepath,
+		protocol.CommandArgTypeIntegerRange, protocol.CommandArgTypeEquipmentSlots, protocol.CommandArgTypeString,
+		protocol.CommandArgTypeBlockPosition, protocol.CommandArgTypePosition, protocol.CommandArgTypeMessage,
+		protocol.CommandArgTypeRawText, protocol.CommandArgTypeJSON, protocol.CommandArgTypeBlockStates,
+		protocol.CommandArgTypeCommand:
+		return flags | base
+	default:
+		r.UnknownEnumOption(base, "legacy command argument type")
+		return flags
+	}
+}
+
+func commandArgumentTypeFromLegacy(r protocol.IO, argumentType uint32) uint32 {
+	flags, base := argumentType&^0xfffff, argumentType&0xfffff
+	switch base {
+	case 1:
+		return flags | protocol.CommandArgTypeInt
+	case 3:
+		return flags | protocol.CommandArgTypeFloat
+	case 4:
+		return flags | protocol.CommandArgTypeValue
+	case 5, 6, 7, 8, 10, 17, 23, 47, 56, 64, 65, 67, 70, 74, 83, 87:
+		return flags | base
+	default:
+		r.UnknownEnumOption(base, "legacy command argument type")
+		return flags
+	}
 }
 
 // CommandEnumContext holds context required for encoding command enums.

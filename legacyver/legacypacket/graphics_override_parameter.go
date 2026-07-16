@@ -22,6 +22,9 @@ func GraphicsOverrideParameter(io protocol.IO, pk *packet.GraphicsOverrideParame
 		}
 	}
 	io.String(&pk.BiomeIdentifier)
+	if proto.IsProtoGTE(io, proto.ID1001) {
+		protocol.OptionalFunc(io, &pk.PlayerIdentifier, io.String)
+	}
 	io.Uint8(&pk.ParameterType)
 	io.Bool(&pk.Reset)
 }

@@ -81,6 +81,10 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 	protocol.OptionalFunc(io, &pk.ForceExperimentalGameplay, io.Bool)
 	io.Uint8(&pk.ChatRestrictionLevel)
 	io.Bool(&pk.DisablePlayerInteractions)
+	if proto.IsProtoGTE(io, proto.ID1001) {
+		io.Varint32(&pk.ServerEditorConnectionPolicy)
+		io.Bool(&pk.AllowAnonymousBlockDropsInEditorWorlds)
+	}
 	if proto.IsProtoGTE(io, proto.ID685) && proto.IsProtoLT(io, proto.ID924) {
 		io.String(&pk.ServerID)
 		io.String(&pk.WorldID)
@@ -117,6 +121,9 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 		io.Bool(&v)
 	}
 	io.Bool(&pk.ServerAuthoritativeSound)
+	if proto.IsProtoGTE(io, proto.ID1001) {
+		io.Bool(&pk.IsLoggingChat)
+	}
 	if proto.IsProtoGTE(io, proto.ID924) {
 		protocol.OptionalFuncIO(io, &pk.ServerJoinInformation, proto.MarshalServerJoinInformation)
 		io.String(&pk.ServerID)
