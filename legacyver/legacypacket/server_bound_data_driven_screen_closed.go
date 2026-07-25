@@ -7,7 +7,7 @@ import (
 )
 
 func ServerBoundDataDrivenScreenClosed(io protocol.IO, pk *packet.ServerBoundDataDrivenScreenClosed) {
-	protocol.OptionalFunc(io, &pk.FormID, io.Uint32)
+	io.Uint32(&pk.FormID)
 	if proto.IsProtoGTE(io, proto.ID1001) {
 		io.String(&pk.CloseReason)
 		return

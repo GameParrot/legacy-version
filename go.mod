@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/pelletier/go-toml v1.9.5
 	github.com/samber/lo v1.53.0
-	github.com/sandertv/gophertunnel v1.57.1
+	github.com/sandertv/gophertunnel v1.57.2-0.20260722164704-0a2ecd5633ea
 	golang.org/x/oauth2 v0.36.0
 )
 

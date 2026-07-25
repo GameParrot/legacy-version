@@ -74,6 +74,8 @@ github.com/sandertv/gophertunnel v1.56.2 h1:eFc58AkMQo43ntR0Wmvz8GRFSdOgABKVDn52
 github.com/sandertv/gophertunnel v1.56.2/go.mod h1:F8+ZPbzxJ0LqunXEaDjqeyUgHVB0rI5ZU+PHnptXGfI=
 github.com/sandertv/gophertunnel v1.57.1 h1:P14qngVxDCnSedLvGJtkLrzDOVBQEL1fFliBrT3E9Mc=
 github.com/sandertv/gophertunnel v1.57.1/go.mod h1:Frjuk3g1EEGRYjzyrEMS4j/hDvTcez2STfuRHkRPlNU=
+github.com/sandertv/gophertunnel v1.57.2-0.20260722164704-0a2ecd5633ea h1:smtXqddGtexU6SYybPLyQGMkz+cZSr/y5VKZH9zfqr4=
+github.com/sandertv/gophertunnel v1.57.2-0.20260722164704-0a2ecd5633ea/go.mod h1:Frjuk3g1EEGRYjzyrEMS4j/hDvTcez2STfuRHkRPlNU=
 github.com/wlynxg/anet v0.0.5 h1:J3VJGi1gvo0JwZ/P1/Yc/8p63SoW98B5dHkYDmpgvvU=
 github.com/wlynxg/anet v0.0.5/go.mod h1:eay5PRQr7fIVAMbTbchTnO9gG65Hg/uYGdc7mguHxoA=
 golang.org/x/crypto v0.54.0 h1:YLIA59K4fiNzHzjnZt2tUJQjQtUWfWbeHBqKtk3eScw=
