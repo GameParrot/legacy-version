@@ -9,7 +9,7 @@ import (
 func MobEquipment(io protocol.IO, pk *packet.MobEquipment) {
 	io.Varuint64(&pk.EntityRuntimeID)
 	if proto.IsProtoGTE(io, proto.ID975) {
-		io.ItemInstanceNew(&pk.NewItem)
+		proto.ItemInstanceNew(io, &pk.NewItem)
 	} else {
 		io.ItemInstance(&pk.NewItem)
 	}

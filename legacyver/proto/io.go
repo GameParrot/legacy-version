@@ -17,12 +17,16 @@ type Reader struct {
 	*protocol.Reader
 
 	protocolID int32
+	shieldID   int32
+	limits     bool
 }
 
-func NewReader(r *protocol.Reader, protocolID int32) *Reader {
+func NewReader(r *protocol.Reader, protocolID, shieldID int32, limits bool) *Reader {
 	return &Reader{
 		Reader:     r,
 		protocolID: protocolID,
+		shieldID:   shieldID,
+		limits:     limits,
 	}
 }
 
@@ -33,10 +37,11 @@ type Writer struct {
 	*protocol.Writer
 
 	protocolID int32
+	shieldID   int32
 }
 
-func NewWriter(w *protocol.Writer, protocolID int32) *Writer {
-	return &Writer{w, protocolID}
+func NewWriter(w *protocol.Writer, protocolID, shieldID int32) *Writer {
+	return &Writer{Writer: w, protocolID: protocolID, shieldID: shieldID}
 }
 
 func (w *Writer) SetProtocolID(protocolID int32) { w.protocolID = protocolID }
@@ -60,16 +65,39 @@ func EmptySlice[T any](io protocol.IO, slice *[]T) {
 
 func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 	io.Varint32(&x.LegacyRequestID)
-	if x.LegacyRequestID < -1 && (x.LegacyRequestID&1) == 0 {
-		protocol.Slice(io, &x.LegacySetItemSlots)
+	if IsProtoGTE(io, ID2168) {
+		protocol.OptionalFunc(io, &x.LegacySetItemSlots, func(slots *[]protocol.LegacySetItemSlot) {
+			protocol.FuncIOSlice(io, slots, marshalLegacySetItemSlot)
+		})
+	} else if x.LegacyRequestID < -1 && (x.LegacyRequestID&1) == 0 {
+		items, _ := x.LegacySetItemSlots.Value()
+		protocol.FuncIOSlice(io, &items, marshalLegacySetItemSlot)
+		x.LegacySetItemSlots = protocol.Option(items)
 	}
-	protocol.Slice(io, &x.Actions)
-	io.Varuint32(&x.ActionType)
-	if IsProtoGTE(io, ID712) {
+	if IsProtoGTE(io, ID2168) {
+		protocol.DoubleOptionalFunc(io, &x.Actions, func(actions *[]protocol.InventoryAction) {
+			protocol.FuncIOSlice(io, actions, MarshalInventoryAction)
+		})
+	} else {
+		actions, _ := x.Actions.Value()
+		protocol.FuncIOSlice(io, &actions, marshalLegacyPlayerInventoryAction)
+		x.Actions = protocol.Option(actions)
+	}
+	if IsProtoGTE(io, ID2168) {
+		protocol.IntegerFunc(&x.ActionType, io.Varint32)
+		protocol.IntegerFunc(&x.TriggerType, io.Uint8)
+	} else {
+		io.Varuint32(&x.ActionType)
+	}
+	if IsProtoGTE(io, ID712) && IsProtoLT(io, ID2168) {
 		io.Varuint32(&x.TriggerType)
 	}
-	io.BlockPos(&x.BlockPosition)
-	io.Varint32(&x.BlockFace)
+	IOUBlockPos(io, &x.BlockPosition)
+	if IsProtoGTE(io, ID2168) {
+		protocol.IntegerFunc(&x.BlockFace, io.Uint8)
+	} else {
+		io.Varint32(&x.BlockFace)
+	}
 	io.Varint32(&x.HotBarSlot)
 	io.ItemInstance(&x.HeldItem)
 	io.Vec3(&x.Position)
@@ -78,12 +106,52 @@ func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 	if IsProtoGTE(io, ID712) {
 		io.Uint8(&x.ClientPrediction)
 	}
+	if IsProtoGTE(io, ID944) {
+		io.Uint8(&x.ClientCooldownState)
+	}
+}
+
+func marshalLegacySetItemSlot(io protocol.IO, x *protocol.LegacySetItemSlot) {
+	io.Uint8(&x.ContainerID)
+	io.ByteSlice(&x.Slots)
+}
+
+func marshalLegacyPlayerInventoryAction(io protocol.IO, x *protocol.InventoryAction) {
+	io.Varuint32(&x.SourceType)
+	switch x.SourceType {
+	case protocol.InventoryActionSourceContainer, protocol.InventoryActionSourceTODO:
+		windowID, _ := x.WindowID.Value()
+		protocol.IntegerFunc(&windowID, io.Varint32)
+		x.WindowID = protocol.Option(windowID)
+	case protocol.InventoryActionSourceWorld:
+		flags, _ := x.SourceFlags.Value()
+		io.Varuint32(&flags)
+		x.SourceFlags = protocol.Option(flags)
+	}
+	io.Varuint32(&x.InventorySlot)
+	io.ItemInstance(&x.OldItem)
+	io.ItemInstance(&x.NewItem)
 }
 
 func IOStackRequestAction(io protocol.IO, x *protocol.StackRequestAction) {
 	if IsReader(io) {
 		var id uint8
-		io.Uint8(&id)
+		if IsProtoGTE(io, ID2168) {
+			var variant uint32
+			io.Varuint32(&variant)
+			var legacyID uint8
+			io.Uint8(&legacyID)
+			id = uint8(variant)
+			if variant >= uint32(protocol.StackRequestActionPlaceInContainer) {
+				id += 2
+			}
+			if legacyID != id {
+				io.InvalidValue(legacyID, "stack request action type", "does not match the variant it was sent under")
+				return
+			}
+		} else {
+			io.Uint8(&id)
+		}
 		if !lookupStackRequestAction(id, x) {
 			io.UnknownEnumOption(id, "stack request action type")
 			return
@@ -93,28 +161,16 @@ func IOStackRequestAction(io protocol.IO, x *protocol.StackRequestAction) {
 		if !lookupStackRequestActionType(*x, &id) {
 			io.UnknownEnumOption(fmt.Sprintf("%T", *x), "stack request action type")
 		}
+		if IsProtoGTE(io, ID2168) {
+			variant := uint32(id)
+			if id > protocol.StackRequestActionTakeOutContainer {
+				variant -= 2
+			}
+			io.Varuint32(&variant)
+		}
 		io.Uint8(&id)
 	}
 	MarshalStackRequestAction(io, *x)
-}
-
-func IORecipe(io protocol.IO, recipe *protocol.Recipe) {
-	if IsReader(io) {
-		var recipeType int32
-		io.Varint32(&recipeType)
-		if !lookupRecipe(recipeType, recipe) {
-			io.UnknownEnumOption(recipeType, "crafting data recipe type")
-			return
-		}
-		UnmarshalRecipe(io.(*protocol.Reader), *recipe)
-	} else {
-		var recipeType int32
-		if !lookupRecipeType(*recipe, &recipeType) {
-			io.UnknownEnumOption(fmt.Sprintf("%T", *recipe), "crafting recipe type")
-		}
-		io.Varint32(&recipeType)
-		MarshalRecipe(io.(*protocol.Writer), *recipe)
-	}
 }
 
 func IOUBlockPos(io protocol.IO, x *protocol.BlockPos) {
@@ -126,6 +182,12 @@ func IOUBlockPos(io protocol.IO, x *protocol.BlockPos) {
 		io.Varuint32(&y)
 		x[1] = int32(y)
 	}
+	io.Varint32(&x[2])
+}
+
+func VarSubChunkPos(io protocol.IO, x *protocol.SubChunkPos) {
+	io.Varint32(&x[0])
+	io.Varint32(&x[1])
 	io.Varint32(&x[2])
 }
 
@@ -141,4 +203,11 @@ func FuncIOSliceUint16Length[T any, S ~*[]T](r protocol.IO, x S, f func(protocol
 	count := uint16(len(*x))
 	r.Uint16(&count)
 	protocol.FuncIOSliceOfLen(r, uint32(count), x, f)
+}
+
+// FuncIOSliceUint32Length reads/writes a slice using a fixed uint32 length.
+func FuncIOSliceUint32Length[T any, S ~*[]T](r protocol.IO, x S, f func(protocol.IO, *T)) {
+	count := uint32(len(*x))
+	r.Uint32(&count)
+	protocol.FuncIOSliceOfLen(r, count, x, f)
 }

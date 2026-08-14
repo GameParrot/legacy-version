@@ -17,7 +17,7 @@ func AddActor(io protocol.IO, pk *packet.AddActor) {
 	io.Float32(&pk.HeadYaw)
 	io.Float32(&pk.BodyYaw)
 	protocol.Slice(io, &pk.Attributes)
-	io.EntityMetadata(&pk.EntityMetadata)
+	proto.MarshalEntityMetadata(io, &pk.EntityMetadata)
 	protocol.Single(io, &pk.EntityProperties)
 	protocol.FuncIOSlice(io, &pk.EntityLinks, proto.MarshalEntityLink)
 }

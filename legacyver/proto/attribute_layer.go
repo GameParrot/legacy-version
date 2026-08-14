@@ -9,9 +9,13 @@ func MarshalEnvironmentAttributeData(r protocol.IO, x *protocol.EnvironmentAttri
 	protocol.OptionalMarshaler(r, &x.ToAttribute)
 	r.Uint32(&x.CurrentTransitionTicks)
 	r.Uint32(&x.TotalTransitionTicks)
-	easingType := easingTypeToString(x.EaseType)
-	r.String(&easingType)
-	easingTypeFromString(r, &x.EaseType, easingType)
+	if IsProtoLT(r, ID975) {
+		r.Int32(&x.EaseType)
+	} else {
+		easingType := easingTypeToString(x.EaseType)
+		r.String(&easingType)
+		easingTypeFromString(r, &x.EaseType, easingType)
+	}
 	if IsProtoGTE(r, ID1001) {
 		r.Uint32(&x.LocalTransitionTicks)
 		r.Bool(&x.NoiseTransition)

@@ -8,7 +8,11 @@ func MarshalAbilityData(r protocol.IO, x *protocol.AbilityData) {
 	r.Int64(&x.EntityUniqueID)
 	r.Uint8(&x.PlayerPermissions)
 	r.Uint8(&x.CommandPermissions)
-	FuncIOSliceUint8Length(r, &x.Layers, MarshalAbilityLayer)
+	if IsProtoGTE(r, ID2168) {
+		protocol.FuncIOSlice(r, &x.Layers, MarshalAbilityLayer)
+	} else {
+		FuncIOSliceUint8Length(r, &x.Layers, MarshalAbilityLayer)
+	}
 }
 
 func MarshalAbilityLayer(r protocol.IO, x *protocol.AbilityLayer) {

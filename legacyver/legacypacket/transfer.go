@@ -12,4 +12,7 @@ func Transfer(io protocol.IO, pk *packet.Transfer) {
 	if proto.IsProtoGTE(io, proto.ID729) {
 		io.Bool(&pk.ReloadWorld)
 	}
+	if proto.IsProtoGTE(io, proto.ID2168) {
+		protocol.OptionalFunc(io, &pk.GatheringJoinInfo, func(x *protocol.GatheringJoinInfo) { proto.MarshalGatheringJoinInfo(io, x) })
+	}
 }

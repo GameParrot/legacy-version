@@ -44,7 +44,11 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 	io.Bool(&pk.CreatedInEditor)
 	io.Bool(&pk.ExportedFromEditor)
 	io.Varint32(&pk.DayCycleLockTime)
-	io.Varint32(&pk.EducationEditionOffer)
+	if proto.IsProtoGTE(io, proto.ID2168) {
+		io.Varuint32(&pk.EducationEditionOffer)
+	} else {
+		protocol.IntegerFunc(&pk.EducationEditionOffer, io.Varint32)
+	}
 	io.Bool(&pk.EducationFeaturesEnabled)
 	io.String(&pk.EducationProductID)
 	io.Float32(&pk.RainLevel)
@@ -56,12 +60,16 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 	io.Varint32(&pk.PlatformBroadcastMode)
 	io.Bool(&pk.CommandsEnabled)
 	io.Bool(&pk.TexturePackRequired)
-	protocol.FuncSlice(io, &pk.GameRules, io.GameRuleLegacy)
+	protocol.FuncIOSlice(io, &pk.GameRules, func(io protocol.IO, x *protocol.GameRule) { proto.MarshalGameRule(io, x, true) })
 	protocol.SliceUint32Length(io, &pk.Experiments)
 	io.Bool(&pk.ExperimentsPreviouslyToggled)
 	io.Bool(&pk.BonusChestEnabled)
 	io.Bool(&pk.StartWithMapEnabled)
-	io.Varint32(&pk.PlayerPermissions)
+	if proto.IsProtoGTE(io, proto.ID2168) {
+		io.Uint8(&pk.PlayerPermissions)
+	} else {
+		protocol.IntegerFunc(&pk.PlayerPermissions, io.Varint32)
+	}
 	io.Int32(&pk.ServerChunkTickRadius)
 	io.Bool(&pk.HasLockedBehaviourPack)
 	io.Bool(&pk.HasLockedTexturePack)
@@ -121,11 +129,12 @@ func StartGame(io protocol.IO, pk *packet.StartGame, items []protocol.ItemEntry)
 		io.Bool(&v)
 	}
 	io.Bool(&pk.ServerAuthoritativeSound)
-	if proto.IsProtoGTE(io, proto.ID1001) {
-		io.Bool(&pk.IsLoggingChat)
+	if proto.IsProtoGTE(io, proto.ID1001) && proto.IsProtoLT(io, proto.ID2168) {
+		var isLoggingChat bool
+		io.Bool(&isLoggingChat)
 	}
 	if proto.IsProtoGTE(io, proto.ID924) {
-		protocol.OptionalFuncIO(io, &pk.ServerJoinInformation, proto.MarshalServerJoinInformation)
+		protocol.OptionalFunc(io, &pk.ServerJoinInformation, func(x *protocol.ServerJoinInformation) { proto.MarshalServerJoinInformation(io, x) })
 		io.String(&pk.ServerID)
 		io.String(&pk.ScenarioID)
 		io.String(&pk.WorldID)

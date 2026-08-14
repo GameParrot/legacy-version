@@ -38,8 +38,23 @@ func MarshalCommandOverload(r protocol.IO, x *protocol.CommandOverload) {
 
 func MarshalCommandParameter(r protocol.IO, x *protocol.CommandParameter) {
 	r.String(&x.Name)
-	if IsProtoGTE(r, ID1001) {
+	if IsProtoGTE(r, ID2168) {
 		r.Uint32(&x.Type)
+	} else if IsProtoGTE(r, ID1001) {
+		legacyType := x.Type
+		if IsReader(r) {
+			r.Uint32(&legacyType)
+			if legacyType&0xfffff == 2 {
+				x.Type = legacyType&^0xfffff | protocol.CommandArgTypeFloat
+			} else {
+				x.Type = legacyType
+			}
+		} else {
+			if legacyType&0xfffff == protocol.CommandArgTypeFloat {
+				legacyType = legacyType&^0xfffff | 2
+			}
+			r.Uint32(&legacyType)
+		}
 	} else if IsReader(r) {
 		var legacyType uint32
 		r.Uint32(&legacyType)
@@ -66,7 +81,7 @@ func commandArgumentTypeToLegacy(r protocol.IO, argumentType uint32) uint32 {
 		return flags | 1
 	case protocol.CommandArgTypeFloat:
 		return flags | 3
-	case protocol.CommandArgTypeValue:
+	case protocol.CommandArgTypeRValue:
 		return flags | 4
 	case protocol.CommandArgTypeWildcardInt, protocol.CommandArgTypeOperator, protocol.CommandArgTypeCompareOperator,
 		protocol.CommandArgTypeTarget, protocol.CommandArgTypeWildcardTarget, protocol.CommandArgTypeFilepath,
@@ -89,7 +104,7 @@ func commandArgumentTypeFromLegacy(r protocol.IO, argumentType uint32) uint32 {
 	case 3:
 		return flags | protocol.CommandArgTypeFloat
 	case 4:
-		return flags | protocol.CommandArgTypeValue
+		return flags | protocol.CommandArgTypeRValue
 	case 5, 6, 7, 8, 10, 17, 23, 47, 56, 64, 65, 67, 70, 74, 83, 87:
 		return flags | base
 	default:

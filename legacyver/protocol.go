@@ -23,7 +23,9 @@ func registerPacket[T packet.Packet](pk T, marshalFn func(io protocol.IO, pk T))
 
 func registerPackets() {
 	registerPacket(&packet.ActorEvent{}, legacypacket.ActorEvent)
+	registerPacket(&packet.AgentAction{}, legacypacket.AgentAction)
 	registerPacket(&packet.AddActor{}, legacypacket.AddActor)
+	registerPacket(&packet.AddItemActor{}, legacypacket.AddItemActor)
 	registerPacket(&packet.AddPlayer{}, legacypacket.AddPlayer)
 	registerPacket(&packet.AddVolumeEntity{}, legacypacket.AddVolumeEntity)
 	registerPacket(&packet.Animate{}, legacypacket.Animate)
@@ -38,8 +40,16 @@ func registerPackets() {
 	registerPacket(&packet.CameraAimAssist{}, legacypacket.CameraAimAssist)
 	registerPacket(&packet.CameraInstruction{}, legacypacket.CameraInstruction)
 	registerPacket(&packet.CameraPresets{}, legacypacket.CameraPresets)
+	registerPacket(&packet.CameraSpline{}, legacypacket.CameraSpline)
 	registerPacket(&packet.ChangeDimension{}, legacypacket.ChangeDimension)
+	registerPacket(&packet.ChangeMobProperty{}, legacypacket.ChangeMobProperty)
 	registerPacket(&packet.ClientBoundMapItemData{}, legacypacket.ClientBoundMapItemData)
+	registerPacket(&packet.ClientBoundAttributeLayerSync{}, legacypacket.ClientBoundAttributeLayerSync)
+	registerPacket(&packet.ClientBoundDataStore{}, legacypacket.ClientBoundDataStore)
+	registerPacket(&packet.ClientBoundDebugRenderer{}, legacypacket.ClientBoundDebugRenderer)
+	registerPacket(&packet.ClientBoundDataDrivenUIShowScreen{}, legacypacket.ClientBoundDataDrivenUIShowScreen)
+	registerPacket(&packet.ClientBoundDataDrivenUICloseScreen{}, legacypacket.ClientBoundDataDrivenUICloseScreen)
+	registerPacket(&packet.ClientboundUpdateSoundData{}, legacypacket.ClientboundUpdateSoundData)
 	registerPacket(&packet.ClientCacheBlobStatus{}, legacypacket.ClientCacheBlobStatus)
 	registerPacket(&packet.ClientCheatAbility{}, legacypacket.ClientCheatAbility)
 	registerPacket(&packet.ClientMovementPredictionSync{}, legacypacket.ClientMovementPredictionSync)
@@ -54,23 +64,30 @@ func registerPackets() {
 	registerPacket(&packet.CraftingData{}, legacypacket.CraftingData)
 	registerPacket(&packet.CreativeContent{}, legacypacket.CreativeContent)
 	registerPacket(&packet.Disconnect{}, legacypacket.Disconnect)
+	registerPacket(&packet.DimensionData{}, legacypacket.DimensionData)
 	registerPacket(&packet.EditorNetwork{}, legacypacket.EditorNetwork)
 	registerPacket(&packet.Emote{}, legacypacket.Emote)
 	registerPacket(&packet.Event{}, legacypacket.Event)
 	registerPacket(&packet.GameRulesChanged{}, legacypacket.GameRulesChanged)
 	registerPacket(&packet.GraphicsOverrideParameter{}, legacypacket.GraphicsOverrideParameter)
 	registerPacket(&packet.Interact{}, legacypacket.Interact)
+	registerPacket(&packet.HurtArmour{}, legacypacket.HurtArmour)
 	registerPacket(&packet.InventoryContent{}, legacypacket.InventoryContent)
 	registerPacket(&packet.InventorySlot{}, legacypacket.InventorySlot)
 	registerPacket(&packet.InventoryTransaction{}, legacypacket.InventoryTransaction)
+	registerPacket(&packet.JigsawStructureData{}, legacypacket.JigsawStructureData)
 	registerPacket(&packet.ItemRegistry{}, legacypacket.ItemRegistry)
 	registerPacket(&packet.ItemStackRequest{}, legacypacket.ItemStackRequest)
 	registerPacket(&packet.ItemStackResponse{}, legacypacket.ItemStackResponse)
 	registerPacket(&packet.LecternUpdate{}, legacypacket.LecternUpdate)
+	registerPacket(&packet.LevelChunk{}, legacypacket.LevelChunk)
 	registerPacket(&packet.LevelSoundEvent{}, legacypacket.LevelSoundEvent)
+	registerPacket(&packet.LocatorBar{}, legacypacket.LocatorBar)
 	registerPacket(&packet.MobArmourEquipment{}, legacypacket.MobArmourEquipment)
 	registerPacket(&packet.MobEffect{}, legacypacket.MobEffect)
 	registerPacket(&packet.MobEquipment{}, legacypacket.MobEquipment)
+	registerPacket(&packet.MoveActorDelta{}, legacypacket.MoveActorDelta)
+	registerPacket(&packet.MovePlayer{}, legacypacket.MovePlayer)
 	registerPacket(&packet.OpenSign{}, legacypacket.OpenSign)
 	registerPacket(&packet.PartyChanged{}, legacypacket.PartyChanged)
 	registerPacket(&packet.PlaySound{}, legacypacket.PlaySound)
@@ -79,12 +96,24 @@ func registerPackets() {
 	registerPacket(&packet.PlayerAuthInput{}, legacypacket.PlayerAuthInput)
 	registerPacket(&packet.PlayerEnchantOptions{}, legacypacket.PlayerEnchantOptions)
 	registerPacket(&packet.PlayerList{}, legacypacket.PlayerList)
+	registerPacket(&packet.PlayerLocation{}, legacypacket.PlayerLocation)
+	registerPacket(&packet.PlayerSkin{}, legacypacket.PlayerSkin)
+	registerPacket(&packet.PlayerUpdateEntityOverrides{}, legacypacket.PlayerUpdateEntityOverrides)
+	registerPacket(&packet.PrimitiveShapes{}, legacypacket.PrimitiveShapes)
+	registerPacket(&packet.ResourcePackClientResponse{}, legacypacket.ResourcePackClientResponse)
 	registerPacket(&packet.ResourcePackStack{}, legacypacket.ResourcePackStack)
 	registerPacket(&packet.ResourcePacksInfo{}, legacypacket.ResourcePacksInfo)
+	registerPacket(&packet.RemoveVolumeEntity{}, legacypacket.RemoveVolumeEntity)
 	registerPacket(&packet.ServerBoundDataDrivenScreenClosed{}, legacypacket.ServerBoundDataDrivenScreenClosed)
+	registerPacket(&packet.ServerBoundDataStore{}, legacypacket.ServerBoundDataStore)
 	registerPacket(&packet.ServerBoundDiagnostics{}, legacypacket.ServerBoundDiagnostics)
+	registerPacket(&packet.ServerPresenceInfo{}, legacypacket.ServerPresenceInfo)
+	registerPacket(&packet.ShowStoreOffer{}, legacypacket.ShowStoreOffer)
 	registerPacket(&packet.SetActorLink{}, legacypacket.SetActorLink)
+	registerPacket(&packet.SetActorData{}, legacypacket.SetActorData)
 	registerPacket(&packet.SetActorMotion{}, legacypacket.SetActorMotion)
+	registerPacket(&packet.SetScore{}, legacypacket.SetScore)
+	registerPacket(&packet.SetScoreboardIdentity{}, legacypacket.SetScoreboardIdentity)
 	registerPacket(&packet.SetHud{}, legacypacket.SetHud)
 	registerPacket(&packet.SetSpawnPosition{}, legacypacket.SetSpawnPosition)
 	registerPacket(&packet.SetTitle{}, legacypacket.SetTitle)
@@ -100,6 +129,7 @@ func registerPackets() {
 	registerPacket(&packet.UpdateBlockSynced{}, legacypacket.UpdateBlockSynced)
 	registerPacket(&packet.UpdateBlock{}, legacypacket.UpdateBlock)
 	registerPacket(&packet.UpdateClientOptions{}, legacypacket.UpdateClientOptions)
+	registerPacket(&packet.UpdateClientInputLocks{}, legacypacket.UpdateClientInputLocks)
 	registerPacket(&packet.UpdatePlayerGameType{}, legacypacket.UpdatePlayerGameType)
 	registerPacket(&packet.UpdateSubChunkBlocks{}, legacypacket.UpdateSubChunkBlocks)
 	registerPacket(&packet.VoxelShapes{}, legacypacket.VoxelShapes)
@@ -151,6 +181,18 @@ func (p *Protocol) ID() int32 {
 }
 
 func (p *Protocol) Packets(listener bool) packet.Pool {
+	if p.id < proto.ID2168 {
+		base := packetPoolServer
+		if listener {
+			base = packetPoolClient
+		}
+		pool := make(packet.Pool, len(base)+1)
+		for id, constructor := range base {
+			pool[id] = constructor
+		}
+		pool[legacypacket.IDSetMovementAuthority] = func() packet.Packet { return &legacypacket.SetMovementAuthority{} }
+		return pool
+	}
 	if listener {
 		return packetPoolClient
 	}
@@ -158,11 +200,11 @@ func (p *Protocol) Packets(listener bool) packet.Pool {
 }
 
 func (p *Protocol) NewReader(r minecraft.ByteReader, shieldID int32, enableLimits bool) protocol.IO {
-	return proto.NewReader(protocol.NewReader(r, shieldID, enableLimits), p.id)
+	return proto.NewReader(protocol.NewReader(r, shieldID, enableLimits), p.id, shieldID, enableLimits)
 }
 
 func (p *Protocol) NewWriter(w minecraft.ByteWriter, shieldID int32) protocol.IO {
-	return proto.NewWriter(protocol.NewWriter(w, shieldID), p.id)
+	return proto.NewWriter(protocol.NewWriter(w, shieldID), p.id, shieldID)
 }
 
 func (p *Protocol) ConvertToLatest(pk packet.Packet, conn *minecraft.Conn) []packet.Packet {
@@ -175,8 +217,50 @@ func (p *Protocol) ConvertFromLatest(pk packet.Packet, conn *minecraft.Conn) []p
 
 func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) []packet.Packet {
 	for pkIndex, pk := range pks {
-		if pk.ID() == packet.IDUpdateClientInputLocks {
+		if p.id < proto.ID2168 && pk.ID() == packet.IDServerPlayerPostMovePosition {
 			return []packet.Packet{}
+		} else if pk.ID() == packet.IDClientboundUpdateSoundData {
+			update := pk.(*packet.ClientboundUpdateSoundData)
+			if _, stop := update.Stop.Value(); !stop {
+				// Before 1.26.40 this packet could only stop a sound. Other
+				// update variants have no faithful legacy representation.
+				return []packet.Packet{}
+			}
+			pks[pkIndex] = &translatedPacket{pk: pk, marshalFn: packets[pk.ID()]}
+		} else if pk.ID() == packet.IDPlayerList {
+			playerList := pk.(*packet.PlayerList)
+			var additions, removals []protocol.PlayerListEntry
+			for _, entry := range playerList.Entries {
+				if entry.ActionType == protocol.PlayerListActionRemove {
+					removals = append(removals, entry)
+				} else {
+					additions = append(additions, entry)
+				}
+			}
+			if len(additions) != 0 && len(removals) != 0 {
+				return p.downgradePackets([]packet.Packet{
+					&packet.PlayerList{Entries: additions},
+					&packet.PlayerList{Entries: removals},
+				}, conn)
+			}
+			pks[pkIndex] = &translatedPacket{pk: pk, marshalFn: packets[pk.ID()]}
+		} else if pk.ID() == packet.IDSetScore {
+			setScore := pk.(*packet.SetScore)
+			var modifications, removals []protocol.ScoreboardEntry
+			for _, entry := range setScore.Entries {
+				if entry.IdentityType == protocol.ScoreboardIdentityRemove {
+					removals = append(removals, entry)
+				} else {
+					modifications = append(modifications, entry)
+				}
+			}
+			if len(modifications) != 0 && len(removals) != 0 {
+				return p.downgradePackets([]packet.Packet{
+					&packet.SetScore{Entries: modifications},
+					&packet.SetScore{Entries: removals},
+				}, conn)
+			}
+			pks[pkIndex] = &translatedPacket{pk: pk, marshalFn: packets[pk.ID()]}
 		} else if pk.ID() == packet.IDStartGame {
 			sg := pk.(*packet.StartGame)
 			sg.GameVersion = p.ver

@@ -1,6 +1,8 @@
 package proto
 
 import (
+	"fmt"
+
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
 
@@ -12,9 +14,10 @@ func MarshalInventoryTransactionData(r protocol.IO, x protocol.InventoryTransact
 		MarshalUseItemOnEntityTransactionData(r, d)
 	case *protocol.ReleaseItemTransactionData:
 		MarshalReleaseItemTransactionData(r, d)
-
+	case *protocol.NormalTransactionData, *protocol.MismatchTransactionData:
+		// These variants carry no additional data.
 	default:
-		x.Marshal(r)
+		r.UnknownEnumOption(fmt.Sprintf("%T", x), "inventory transaction data type")
 	}
 }
 
@@ -36,7 +39,7 @@ func MarshalUseItemTransactionData(r protocol.IO, x *protocol.UseItemTransaction
 	}
 	r.Varint32(&x.HotBarSlot)
 	if IsProtoGTE(r, ID1001) {
-		r.ItemInstanceNew(&x.HeldItem)
+		ItemInstanceNew(r, &x.HeldItem)
 	} else {
 		r.ItemInstance(&x.HeldItem)
 	}
@@ -59,7 +62,7 @@ func MarshalReleaseItemTransactionData(r protocol.IO, data *protocol.ReleaseItem
 	}
 	r.Varint32(&data.HotBarSlot)
 	if IsProtoGTE(r, ID1001) {
-		r.ItemInstanceNew(&data.HeldItem)
+		ItemInstanceNew(r, &data.HeldItem)
 	} else {
 		r.ItemInstance(&data.HeldItem)
 	}
@@ -75,7 +78,7 @@ func MarshalUseItemOnEntityTransactionData(r protocol.IO, data *protocol.UseItem
 	}
 	r.Varint32(&data.HotBarSlot)
 	if IsProtoGTE(r, ID1001) {
-		r.ItemInstanceNew(&data.HeldItem)
+		ItemInstanceNew(r, &data.HeldItem)
 	} else {
 		r.ItemInstance(&data.HeldItem)
 	}
@@ -85,7 +88,10 @@ func MarshalUseItemOnEntityTransactionData(r protocol.IO, data *protocol.UseItem
 
 func MarshalInventoryAction(r protocol.IO, x *protocol.InventoryAction) {
 	r.Varuint32(&x.SourceType)
-	if IsProtoGTE(r, ID1001) {
+	if IsProtoGTE(r, ID2168) {
+		protocol.DoubleOptionalFunc(r, &x.WindowID, r.Int8)
+		protocol.DoubleOptionalFunc(r, &x.SourceFlags, r.Varuint32)
+	} else if IsProtoGTE(r, ID1001) {
 		present := true
 		r.Bool(&present)
 		if !present {
@@ -94,7 +100,9 @@ func MarshalInventoryAction(r protocol.IO, x *protocol.InventoryAction) {
 		hasContainerID := x.SourceType == protocol.InventoryActionSourceContainer || x.SourceType == protocol.InventoryActionSourceTODO
 		r.Bool(&hasContainerID)
 		if hasContainerID {
-			r.Int8(&x.WindowID)
+			windowID, _ := x.WindowID.Value()
+			r.Int8(&windowID)
+			x.WindowID = protocol.Option(windowID)
 		}
 		r.Bool(&present)
 		if !present {
@@ -103,20 +111,26 @@ func MarshalInventoryAction(r protocol.IO, x *protocol.InventoryAction) {
 		hasFlags := x.SourceType == protocol.InventoryActionSourceWorld
 		r.Bool(&hasFlags)
 		if hasFlags {
-			r.Varuint32(&x.SourceFlags)
+			flags, _ := x.SourceFlags.Value()
+			r.Varuint32(&flags)
+			x.SourceFlags = protocol.Option(flags)
 		}
 	} else {
 		switch x.SourceType {
 		case protocol.InventoryActionSourceContainer, protocol.InventoryActionSourceTODO:
-			protocol.IntegerFunc(&x.WindowID, r.Varint32)
+			windowID, _ := x.WindowID.Value()
+			protocol.IntegerFunc(&windowID, r.Varint32)
+			x.WindowID = protocol.Option(windowID)
 		case protocol.InventoryActionSourceWorld:
-			r.Varuint32(&x.SourceFlags)
+			flags, _ := x.SourceFlags.Value()
+			r.Varuint32(&flags)
+			x.SourceFlags = protocol.Option(flags)
 		}
 	}
 	r.Varuint32(&x.InventorySlot)
-	if IsProtoGTE(r, ID1001) {
-		r.ItemInstanceNew(&x.OldItem)
-		r.ItemInstanceNew(&x.NewItem)
+	if IsProtoGTE(r, ID1001) && IsProtoLT(r, ID2168) {
+		ItemInstanceNew(r, &x.OldItem)
+		ItemInstanceNew(r, &x.NewItem)
 	} else {
 		r.ItemInstance(&x.OldItem)
 		r.ItemInstance(&x.NewItem)

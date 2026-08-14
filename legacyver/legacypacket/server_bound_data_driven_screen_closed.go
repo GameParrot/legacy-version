@@ -7,7 +7,16 @@ import (
 )
 
 func ServerBoundDataDrivenScreenClosed(io protocol.IO, pk *packet.ServerBoundDataDrivenScreenClosed) {
-	io.Uint32(&pk.FormID)
+	if proto.IsProtoGTE(io, proto.ID2168) {
+		io.Uint32(&pk.FormID)
+	} else {
+		var formID protocol.Optional[uint32]
+		if pk.FormID != 0 {
+			formID = protocol.Option(pk.FormID)
+		}
+		protocol.OptionalFunc(io, &formID, io.Uint32)
+		pk.FormID, _ = formID.Value()
+	}
 	if proto.IsProtoGTE(io, proto.ID1001) {
 		io.String(&pk.CloseReason)
 		return

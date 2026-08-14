@@ -17,10 +17,20 @@ func ServerBoundDiagnostics(io protocol.IO, pk *packet.ServerBoundDiagnostics) {
 	io.Float32(&pk.AverageRemainderTimePercent)
 	io.Float32(&pk.AverageUnaccountedTimePercent)
 	if proto.IsProtoGTE(io, proto.ID924) {
-		protocol.Slice(io, &pk.MemoryCategoryValues)
+		if proto.IsProtoLT(io, proto.ID944) {
+			protocol.SliceUint32Length(io, &pk.MemoryCategoryValues)
+		} else {
+			protocol.Slice(io, &pk.MemoryCategoryValues)
+		}
 		if proto.IsProtoGTE(io, proto.ID975) {
 			protocol.Slice(io, &pk.EntityDiagnostics)
 			protocol.Slice(io, &pk.SystemDiagnostics)
+			if proto.IsProtoGTE(io, proto.ID2168) {
+				protocol.FuncIOSlice(io, &pk.SystemCategories, func(io protocol.IO, x *protocol.SystemCategory) {
+					io.String(&x.CategoryName)
+					io.Uint64(&x.SystemIndex)
+				})
+			}
 			if proto.IsProtoGTE(io, proto.ID1001) {
 				protocol.Slice(io, &pk.WhiskerScopes)
 			}

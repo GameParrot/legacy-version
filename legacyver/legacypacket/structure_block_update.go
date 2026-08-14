@@ -17,7 +17,11 @@ func StructureBlockUpdate(io protocol.IO, pk *packet.StructureBlockUpdate) {
 	io.Bool(&pk.ShowBoundingBox)
 	io.Varint32(&pk.StructureBlockType)
 	protocol.Single(io, &pk.Settings)
-	io.Varint32(&pk.RedstoneSaveMode)
+	if proto.IsProtoGTE(io, proto.ID2168) {
+		io.Uint8(&pk.RedstoneSaveMode)
+	} else {
+		protocol.IntegerFunc(&pk.RedstoneSaveMode, io.Varint32)
+	}
 	io.Bool(&pk.ShouldTrigger)
 	io.Bool(&pk.Waterlogged)
 }

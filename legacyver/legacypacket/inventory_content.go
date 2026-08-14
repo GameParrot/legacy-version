@@ -9,7 +9,7 @@ import (
 func InventoryContent(io protocol.IO, pk *packet.InventoryContent) {
 	io.Varuint32(&pk.WindowID)
 	if proto.IsProtoGTE(io, proto.ID1001) {
-		protocol.FuncSlice(io, &pk.Content, io.ItemInstanceNew)
+		protocol.FuncIOSlice(io, &pk.Content, proto.ItemInstanceNew)
 	} else {
 		protocol.FuncSlice(io, &pk.Content, io.ItemInstance)
 	}
@@ -18,7 +18,7 @@ func InventoryContent(io protocol.IO, pk *packet.InventoryContent) {
 	}
 	if proto.IsProtoGTE(io, proto.ID748) {
 		if proto.IsProtoGTE(io, proto.ID1001) {
-			io.ItemInstanceNew(&pk.StorageItem)
+			proto.ItemInstanceNew(io, &pk.StorageItem)
 		} else {
 			io.ItemInstance(&pk.StorageItem)
 		}

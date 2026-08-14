@@ -18,7 +18,7 @@ func AddPlayer(io protocol.IO, pk *packet.AddPlayer) {
 	io.Float32(&pk.HeadYaw)
 	io.ItemInstance(&pk.HeldItem)
 	io.Varint32(&pk.GameType)
-	io.EntityMetadata(&pk.EntityMetadata)
+	proto.MarshalEntityMetadata(io, &pk.EntityMetadata)
 	protocol.Single(io, &pk.EntityProperties)
 	proto.MarshalAbilityData(io, &pk.AbilityData)
 	protocol.FuncIOSlice(io, &pk.EntityLinks, proto.MarshalEntityLink)

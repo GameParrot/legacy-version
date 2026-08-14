@@ -11,7 +11,7 @@ func InventorySlot(io protocol.IO, pk *packet.InventorySlot) {
 	io.Varuint32(&pk.Slot)
 	if proto.IsProtoGTE(io, proto.ID729) {
 		if proto.IsProtoGTE(io, proto.ID975) {
-			protocol.OptionalFuncIO(io, &pk.Container, proto.MarshalFullContainerName)
+			protocol.OptionalFunc(io, &pk.Container, func(x *protocol.FullContainerName) { proto.MarshalFullContainerName(io, x) })
 		} else {
 			container, _ := pk.Container.Value()
 			protocol.Single(io, &container)
@@ -20,7 +20,7 @@ func InventorySlot(io protocol.IO, pk *packet.InventorySlot) {
 	}
 	if proto.IsProtoGTE(io, proto.ID748) {
 		if proto.IsProtoGTE(io, proto.ID975) {
-			protocol.OptionalFunc(io, &pk.StorageItem, io.ItemInstanceNew)
+			protocol.OptionalFunc(io, &pk.StorageItem, func(x *protocol.ItemInstance) { proto.ItemInstanceNew(io, x) })
 		} else {
 			item, _ := pk.StorageItem.Value()
 			io.ItemInstance(&item)
@@ -33,7 +33,7 @@ func InventorySlot(io protocol.IO, pk *packet.InventorySlot) {
 		}
 	}
 	if proto.IsProtoGTE(io, proto.ID975) {
-		io.ItemInstanceNew(&pk.NewItem)
+		proto.ItemInstanceNew(io, &pk.NewItem)
 	} else {
 		io.ItemInstance(&pk.NewItem)
 	}

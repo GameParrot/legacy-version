@@ -8,7 +8,7 @@ import (
 
 func CreativeContent(io protocol.IO, pk *packet.CreativeContent) {
 	if proto.IsProtoGTE(io, proto.ID776) {
-		protocol.Slice(io, &pk.Groups)
+		protocol.FuncIOSlice(io, &pk.Groups, proto.MarshalCreativeGroup)
 	}
 	protocol.FuncIOSlice(io, &pk.Items, proto.MarshalCreativeItem)
 }

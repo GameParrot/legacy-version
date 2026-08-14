@@ -23,9 +23,15 @@ func ResourcePacksInfo(io protocol.IO, pk *packet.ResourcePacksInfo) {
 		forcingServerPacks := false
 		io.Bool(&forcingServerPacks)
 		bps := []proto.BehaviourPackInfo{}
-		protocol.SliceUint16Length(io, &bps)
+		count := uint16(len(bps))
+		io.Uint16(&count)
+		protocol.SliceOfLen(io, uint32(count), &bps)
 	}
-	proto.FuncIOSliceUint16Length(io, &pk.TexturePacks, proto.MarshalTexturePackInfo)
+	if proto.IsProtoGTE(io, proto.ID2168) {
+		protocol.FuncIOSlice(io, &pk.TexturePacks, proto.MarshalTexturePackInfo)
+	} else {
+		proto.FuncIOSliceUint16Length(io, &pk.TexturePacks, proto.MarshalTexturePackInfo)
+	}
 	if proto.IsProtoLT(io, proto.ID748) {
 		if proto.IsReader(io) {
 			packURLs := make([]protocol.PackURL, 0)

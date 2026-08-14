@@ -7,6 +7,9 @@ import (
 )
 
 func AnvilDamage(io protocol.IO, pk *packet.AnvilDamage) {
-	io.Uint8(&pk.Damage)
+	if proto.IsProtoLT(io, proto.ID2168) {
+		var damage uint8
+		io.Uint8(&damage)
+	}
 	proto.IOUBlockPos(io, &pk.AnvilPosition)
 }

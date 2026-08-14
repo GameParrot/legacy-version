@@ -412,7 +412,7 @@ var legacySoundEventByID = map[uint32]string{
 	435: packet.SoundEventFrogspawnBreak,
 	436: packet.SoundEventSonicBoom,
 	437: packet.SoundEventSonicCharge,
-	438: packet.SoundeventItemThrown,
+	438: packet.SoundEventItemThrown,
 	439: packet.SoundEventRecord5,
 	440: packet.SoundEventConvertToFrog,
 	441: packet.SoundEventRecordPlaying,

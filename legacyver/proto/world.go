@@ -12,4 +12,7 @@ func MarshalDimensionDefinition(r protocol.IO, x *protocol.DimensionDefinition) 
 	if IsProtoGTE(r, ID975) {
 		r.Varint32(&x.DimensionType)
 	}
+	if IsProtoGTE(r, ID2168) {
+		r.UUID(&x.PackID)
+	}
 }

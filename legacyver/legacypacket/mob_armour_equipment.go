@@ -9,11 +9,11 @@ import (
 func MobArmourEquipment(io protocol.IO, pk *packet.MobArmourEquipment) {
 	io.Varuint64(&pk.EntityRuntimeID)
 	if proto.IsProtoGTE(io, proto.ID1001) {
-		io.ItemInstanceNew(&pk.Helmet)
-		io.ItemInstanceNew(&pk.Chestplate)
-		io.ItemInstanceNew(&pk.Leggings)
-		io.ItemInstanceNew(&pk.Boots)
-		io.ItemInstanceNew(&pk.Body)
+		proto.ItemInstanceNew(io, &pk.Helmet)
+		proto.ItemInstanceNew(io, &pk.Chestplate)
+		proto.ItemInstanceNew(io, &pk.Leggings)
+		proto.ItemInstanceNew(io, &pk.Boots)
+		proto.ItemInstanceNew(io, &pk.Body)
 	} else {
 		io.ItemInstance(&pk.Helmet)
 		io.ItemInstance(&pk.Chestplate)

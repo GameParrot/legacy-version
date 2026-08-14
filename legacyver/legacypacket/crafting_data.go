@@ -7,9 +7,7 @@ import (
 )
 
 func CraftingData(io protocol.IO, pk *packet.CraftingData) {
-	protocol.FuncSlice(io, &pk.Recipes, func(p *protocol.Recipe) {
-		proto.IORecipe(io, p)
-	})
+	proto.MarshalCraftingData(io, pk)
 	protocol.Slice(io, &pk.PotionRecipes)
 	protocol.Slice(io, &pk.PotionContainerChangeRecipes)
 	protocol.FuncSlice(io, &pk.MaterialReducers, io.MaterialReducer)

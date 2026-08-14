@@ -13,7 +13,9 @@ func MarshalCameraAimAssistCategory(r protocol.IO, x *protocol.CameraAimAssistCa
 func MarshalCameraAimAssistPriorities(r protocol.IO, x *protocol.CameraAimAssistPriorities) {
 	protocol.Slice(r, &x.Entities)
 	protocol.Slice(r, &x.Blocks)
-	protocol.Slice(r, &x.BlockTags)
+	if IsProtoGTE(r, ID898) {
+		protocol.Slice(r, &x.BlockTags)
+	}
 	if IsProtoGTE(r, ID924) {
 		protocol.Slice(r, &x.EntityTypeFamilies)
 	}
@@ -24,8 +26,10 @@ func MarshalCameraAimAssistPriorities(r protocol.IO, x *protocol.CameraAimAssist
 func MarshalCameraAimAssistPreset(r protocol.IO, x *protocol.CameraAimAssistPreset) {
 	r.String(&x.Identifier)
 	protocol.FuncSlice(r, &x.BlockExclusions, r.String)
-	protocol.FuncSlice(r, &x.EntityExclusions, r.String)
-	protocol.FuncSlice(r, &x.BlockTagExclusions, r.String)
+	if IsProtoGTE(r, ID898) {
+		protocol.FuncSlice(r, &x.EntityExclusions, r.String)
+		protocol.FuncSlice(r, &x.BlockTagExclusions, r.String)
+	}
 	if IsProtoGTE(r, ID924) {
 		protocol.FuncSlice(r, &x.EntityTypeFamilyExclusions, r.String)
 	}
@@ -38,17 +42,20 @@ func MarshalCameraAimAssistPreset(r protocol.IO, x *protocol.CameraAimAssistPres
 func MarshalCameraRotationOption(r protocol.IO, x *protocol.CameraRotationOption) {
 	r.Vec3(&x.Value)
 	r.Float32(&x.Time)
-	if IsProtoGTE(r, ID924) {
-		if IsProtoLT(r, ID944) {
-			easeType := protocol.Option(uint8(x.EaseType))
-			protocol.OptionalFunc(r, &easeType, r.Uint8)
-			easeTypeVal, _ := easeType.Value()
-			x.EaseType = int32(easeTypeVal)
-		} else {
-			easingType := easingTypeToString(x.EaseType)
-			r.String(&easingType)
-			easingTypeFromString(r, &x.EaseType, easingType)
-		}
+	if IsProtoLT(r, ID924) {
+		return
+	}
+	if IsReader(r) {
+		x.EaseType = 0
+	}
+	if IsProtoLT(r, ID944) {
+		marshalOptionalLegacyEaseType(r, x.EaseType, r.Uint8, func(value uint8) { x.EaseType = int32(value) })
+	} else if IsProtoLT(r, ID975) {
+		marshalOptionalLegacyEaseType(r, x.EaseType, r.String, func(value string) { easingTypeFromString(r, &x.EaseType, value) })
+	} else {
+		easingType := easingTypeToString(x.EaseType)
+		r.String(&easingType)
+		easingTypeFromString(r, &x.EaseType, easingType)
 	}
 }
 
@@ -88,14 +95,35 @@ func MarshalCameraSplineInstruction(r protocol.IO, x *protocol.CameraSplineInstr
 func MarshalCameraProgressOption(r protocol.IO, x *protocol.CameraProgressOption) {
 	r.Float32(&x.Value)
 	r.Float32(&x.Time)
-	if IsProtoGTE(r, ID944) {
+	if IsReader(r) {
+		x.EaseType = 0
+	}
+	if IsProtoLT(r, ID944) {
+		marshalOptionalLegacyEaseType(r, x.EaseType, r.Uint8, func(value uint8) { x.EaseType = int32(value) })
+	} else if IsProtoLT(r, ID975) {
+		marshalOptionalLegacyEaseType(r, x.EaseType, r.String, func(value string) { easingTypeFromString(r, &x.EaseType, value) })
+	} else {
 		easingType := easingTypeToString(x.EaseType)
 		r.String(&easingType)
 		easingTypeFromString(r, &x.EaseType, easingType)
-	} else {
-		easeType := uint8(x.EaseType)
-		r.Uint8(&easeType)
-		x.EaseType = int32(easeType)
+	}
+}
+
+func marshalOptionalLegacyEaseType[T comparable](r protocol.IO, easeType int32, marshal func(*T), decode func(T)) {
+	var value protocol.Optional[T]
+	if !IsReader(r) && easeType != 0 {
+		var encoded any
+		switch any(*new(T)).(type) {
+		case uint8:
+			encoded = uint8(easeType)
+		case string:
+			encoded = easingTypeToString(easeType)
+		}
+		value = protocol.Option(encoded.(T))
+	}
+	protocol.OptionalFunc(r, &value, marshal)
+	if decoded, ok := value.Value(); ok {
+		decode(decoded)
 	}
 }
 
@@ -105,8 +133,8 @@ func MarshalCameraSplineDefinition(r protocol.IO, x *protocol.CameraSplineDefini
 		r.Float32(&x.TotalTime)
 		protocol.OptionalFunc(r, &x.SplineType, r.String)
 		protocol.FuncSlice(r, &x.ControlPoints, r.Vec3)
-		protocol.Slice(r, &x.ProgressKeyFrames)
-		protocol.Slice(r, &x.RotationKeyFrames)
+		protocol.FuncIOSlice(r, &x.ProgressKeyFrames, MarshalCameraProgressOption)
+		protocol.FuncIOSlice(r, &x.RotationKeyFrames, MarshalCameraRotationOption)
 	} else {
 		d := &protocol.CameraSplineInstruction{
 			TotalTime:         x.TotalTime,

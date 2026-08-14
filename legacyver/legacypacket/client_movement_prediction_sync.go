@@ -7,7 +7,7 @@ import (
 )
 
 func ClientMovementPredictionSync(io protocol.IO, pk *packet.ClientMovementPredictionSync) {
-	io.Bitset(&pk.ActorFlags, proto.EntityDataFlagsLength(proto.FetchProtoID(io)))
+	io.Bitset(&pk.ActorFlags, proto.ClientMovementPredictionFlagsLength(proto.FetchProtoID(io)))
 	io.Float32(&pk.BoundingBoxScale)
 	io.Float32(&pk.BoundingBoxWidth)
 	io.Float32(&pk.BoundingBoxHeight)
@@ -17,6 +17,11 @@ func ClientMovementPredictionSync(io protocol.IO, pk *packet.ClientMovementPredi
 	io.Float32(&pk.JumpStrength)
 	io.Float32(&pk.Health)
 	io.Float32(&pk.Hunger)
+	if proto.IsProtoGTE(io, proto.ID975) {
+		io.Float32(&pk.FrictionModifier)
+		io.Float32(&pk.Bounciness)
+		io.Float32(&pk.AirDragModifier)
+	}
 	io.Varint64(&pk.EntityUniqueID)
 	if proto.IsProtoGTE(io, proto.ID786) {
 		io.Bool(&pk.Flying)

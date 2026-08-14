@@ -9,10 +9,15 @@ import (
 func SubChunk(io protocol.IO, pk *packet.SubChunk) {
 	io.Bool(&pk.CacheEnabled)
 	io.Varint32(&pk.Dimension)
-	io.SubChunkPos(&pk.Position)
+	if proto.IsProtoGTE(io, proto.ID2168) {
+		io.SubChunkPos(&pk.Position)
+		protocol.FuncIOSlice(io, &pk.SubChunkEntries, proto.MarshalSubChunkEntry)
+		return
+	}
+	proto.VarSubChunkPos(io, &pk.Position)
 	if pk.CacheEnabled {
-		protocol.FuncIOSliceUint32Length(io, &pk.SubChunkEntries, proto.MarshalSubChunkEntry)
+		proto.FuncIOSliceUint32Length(io, &pk.SubChunkEntries, proto.MarshalSubChunkEntry)
 	} else {
-		protocol.FuncIOSliceUint32Length(io, &pk.SubChunkEntries, proto.SubChunkEntryNoCache)
+		proto.FuncIOSliceUint32Length(io, &pk.SubChunkEntries, proto.SubChunkEntryNoCache)
 	}
 }
