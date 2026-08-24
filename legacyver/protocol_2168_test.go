@@ -106,6 +106,66 @@ func TestProtocol2168BossEventPreservesRemovedPlayerID(t *testing.T) {
 	}
 }
 
+func TestProtocol2192PrimitiveShapesAllVariantsMatchGophertunnel(t *testing.T) {
+	if packet.IDPrimitiveShapes != 328 {
+		t.Fatalf("PrimitiveShapes packet ID is %d, Mojang documents 328", packet.IDPrimitiveShapes)
+	}
+	shapeData := []protocol.ShapeData{
+		&protocol.LastShape{},
+		&protocol.ArrowShape{
+			ArrowEndLocation: protocol.Option(mgl32.Vec3{1, 2, 3}),
+			ArrowHeadLength:  protocol.Option(float32(4)),
+			ArrowHeadRadius:  protocol.Option(float32(5)),
+			Segments:         protocol.Option(uint8(6)),
+		},
+		&protocol.TextShape{
+			Text: "first\nsecond", UseRotation: true,
+			BackgroundColour: protocol.Option(color.RGBA{R: 1, G: 2, B: 3, A: 4}),
+			LineGapHeight:    protocol.Option(float32(1.25)),
+			DepthTest:        true, ShowBackface: true, ShowBackfaceText: true,
+		},
+		&protocol.BoxShape{BoxBound: mgl32.Vec3{7, 8, 9}},
+		&protocol.LineShape{LineEndLocation: mgl32.Vec3{10, 11, 12}},
+		&protocol.SphereShape{Segments: 13},
+		&protocol.CylinderShape{RadiusX: mgl32.Vec2{14, 15}, RadiusZ: mgl32.Vec2{16, 17}, Height: 18, NumSegments: 19},
+		&protocol.PyramidShape{Width: 20, Depth: protocol.Option(float32(21)), Height: 22},
+		&protocol.EllipsoidShape{Radii: mgl32.Vec3{23, 24, 25}, SegmentsPerAxis: 26},
+		&protocol.ConeShape{Radii: mgl32.Vec2{27, 28}, Height: 29, NumSegments: 30},
+	}
+	shapeTypes := []protocol.Optional[uint8]{
+		{},
+		protocol.Option(uint8(protocol.PrimitiveShapeArrow)),
+		protocol.Option(uint8(protocol.PrimitiveShapeText)),
+		protocol.Option(uint8(protocol.PrimitiveShapeBox)),
+		protocol.Option(uint8(protocol.PrimitiveShapeLine)),
+		protocol.Option(uint8(protocol.PrimitiveShapeSphere)),
+		protocol.Option(uint8(protocol.PrimitiveShapeCylinder)),
+		protocol.Option(uint8(protocol.PrimitiveShapePyramid)),
+		protocol.Option(uint8(protocol.PrimitiveShapeEllipsoid)),
+		protocol.Option(uint8(protocol.PrimitiveShapeCone)),
+	}
+	shapes := make([]protocol.PrimitiveShape, len(shapeData))
+	for i, data := range shapeData {
+		shapes[i] = protocol.PrimitiveShape{
+			NetworkID: uint64(i + 1),
+			Type:      shapeTypes[i], Location: protocol.Option(mgl32.Vec3{31, 32, 33}),
+			Scale: protocol.Option(float32(34)), Rotation: protocol.Option(mgl32.Vec3{35, 36, 37}),
+			TotalTimeLeft: protocol.Option(float32(38)), MaxRenderDistance: protocol.Option(float32(39)),
+			Colour:      protocol.Option(color.RGBA{R: 40, G: 41, B: 42, A: 43}),
+			DimensionID: protocol.Option(int32(-1)), AttachedToEntityID: protocol.Option(int64(-44)),
+			ExtraShapeData: data,
+		}
+	}
+	fixture := &packet.PrimitiveShapes{Shapes: shapes}
+	native := marshalThroughProtocol(t, minecraft.DefaultProtocol, fixture)
+	translated := &Protocol{id: legacyproto.ID2192, ver: "1.26.50"}
+	compatible := marshalThroughProtocol(t, translated, fixture)
+	if !reflect.DeepEqual(native, compatible) {
+		t.Fatalf("protocol 2192 PrimitiveShapes variants differ\nnative:     %x\ntranslated: %x", native, compatible)
+	}
+	assertProtocolRoundTrip(t, translated, packet.IDPrimitiveShapes, native)
+}
+
 func TestProtocol2192TranslationMatchesGophertunnelProtocol(t *testing.T) {
 	flags := protocol.NewInputFlags(packet.InputFlagCount)
 	flags.Set(packet.InputFlagPerformItemInteraction)
