@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unsafe"
 
 	"github.com/akmalfairuz/legacy-version/legacyver/legacypacket"
 	legacyproto "github.com/akmalfairuz/legacy-version/legacyver/proto"
@@ -23,7 +24,7 @@ import (
 	"github.com/sandertv/gophertunnel/minecraft/protocol/packet"
 )
 
-func TestProtocol2168MarshalsLikeLatest(t *testing.T) {
+func TestProtocol2192MarshalsLikeLatest(t *testing.T) {
 	tests := []packet.Packet{
 		&packet.AnvilDamage{},
 		&packet.ClientBoundMapItemData{},
@@ -67,9 +68,9 @@ func TestProtocol2168MarshalsLikeLatest(t *testing.T) {
 			}
 			var native, compatible bytes.Buffer
 			pk.Marshal(protocol.NewWriter(&native, 0))
-			marshalFn(legacyproto.NewWriter(protocol.NewWriter(&compatible, 0), legacyproto.ID2168, 0), pk)
+			marshalFn(legacyproto.NewWriter(protocol.NewWriter(&compatible, 0), legacyproto.ID2192, 0), pk)
 			if !bytes.Equal(native.Bytes(), compatible.Bytes()) {
-				t.Fatalf("1.26.40 marshal differs from latest\nnative:     %x\ncompatible: %x", native.Bytes(), compatible.Bytes())
+				t.Fatalf("1.26.50 marshal differs from latest\nnative:     %x\ncompatible: %x", native.Bytes(), compatible.Bytes())
 			}
 		})
 	}
@@ -85,7 +86,27 @@ func TestProtocol1001EntityMetadataByteLayout(t *testing.T) {
 	}
 }
 
-func TestProtocol2168TranslationMatchesGophertunnelProtocol(t *testing.T) {
+func TestProtocol2168BossEventPreservesRemovedPlayerID(t *testing.T) {
+	p := New2168()
+	wired := p.Packets(false)[packet.IDBossEvent]().(*legacypacket.TranslatedBossEvent)
+	wired.Pk.EventType = packet.BossEventRegisterPlayer
+	wired.PlayerUniqueID = -987654321
+	var first bytes.Buffer
+	wired.Marshal(p.NewWriter(&first, 0))
+	decoded := p.Packets(false)[packet.IDBossEvent]().(*legacypacket.TranslatedBossEvent)
+	reader := bytes.NewBuffer(first.Bytes())
+	decoded.Marshal(p.NewReader(reader, 0, true))
+	if reader.Len() != 0 || decoded.PlayerUniqueID != wired.PlayerUniqueID {
+		t.Fatalf("protocol 2168 BossEvent player ID was not preserved: got %d, want %d", decoded.PlayerUniqueID, wired.PlayerUniqueID)
+	}
+	var second bytes.Buffer
+	decoded.Marshal(p.NewWriter(&second, 0))
+	if !bytes.Equal(first.Bytes(), second.Bytes()) {
+		t.Fatalf("protocol 2168 BossEvent decode/re-encode changed bytes\nfirst:  %x\nsecond: %x", first.Bytes(), second.Bytes())
+	}
+}
+
+func TestProtocol2192TranslationMatchesGophertunnelProtocol(t *testing.T) {
 	flags := protocol.NewInputFlags(packet.InputFlagCount)
 	flags.Set(packet.InputFlagPerformItemInteraction)
 	emptyFlags := protocol.NewInputFlags(packet.InputFlagCount)
@@ -96,7 +117,7 @@ func TestProtocol2168TranslationMatchesGophertunnelProtocol(t *testing.T) {
 		"full/player_auth_input": &packet.PlayerAuthInput{
 			InputData: flags, ItemInteractionData: protocol.Option(protocol.UseItemTransactionData{
 				LegacySetItemSlots: protocol.Option([]protocol.LegacySetItemSlot{{ContainerID: 2, Slots: []byte{1, 4}}}),
-				Actions:            protocol.Option([]protocol.InventoryAction{}), ActionType: protocol.UseItemActionClickBlock,
+				Actions:            []protocol.InventoryAction{}, ActionType: protocol.UseItemActionClickBlock,
 				TriggerType: protocol.TriggerTypePlayerInput, BlockPosition: protocol.BlockPos{10, 64, -10}, BlockFace: 2,
 				ClientPrediction: protocol.ClientPredictionSuccess, ClientCooldownState: protocol.ClientCooldownStateOn,
 			}),
@@ -105,7 +126,7 @@ func TestProtocol2168TranslationMatchesGophertunnelProtocol(t *testing.T) {
 		"full/sub_chunk": &packet.SubChunk{CacheEnabled: true, SubChunkEntries: []protocol.SubChunkEntry{{
 			Offset: protocol.SubChunkOffset{1, -2, 3}, Result: protocol.SubChunkResultSuccess,
 			RawPayload: protocol.Option([]byte{1, 2, 3}), HeightMapType: protocol.HeightMapDataHasData,
-			HeightMapData: protocol.Option(make([]int8, 256)), RenderHeightMapType: protocol.HeightMapDataNone,
+			HeightMapData: protocol.Option(make([]int8, 272)), RenderHeightMapType: protocol.HeightMapDataNone,
 			BlobHash: protocol.Option(uint64(99)),
 		}}},
 		"empty/player_list":      &packet.PlayerList{},
@@ -150,14 +171,32 @@ func TestProtocol2168TranslationMatchesGophertunnelProtocol(t *testing.T) {
 		"full/server_presence_info": &packet.ServerPresenceInfo{PresenceInfo: protocol.Option(protocol.PresenceInfo{
 			RichPresenceID: protocol.Option("presence"),
 		})},
+		"full/pack_setting_string_list": &packet.ServerBoundPackSettingChange{PackSetting: protocol.PackSetting{
+			Name: "choices", Value: []string{"first", "second"},
+		}},
 	}
-	translated := &Protocol{id: legacyproto.ID2168, ver: "1.26.40"}
+	translated := &Protocol{id: legacyproto.ID2192, ver: "1.26.50"}
 	for name, fixture := range fixtures {
 		t.Run(name, func(t *testing.T) {
 			native := marshalThroughProtocol(t, minecraft.DefaultProtocol, fixture)
 			compat := marshalThroughProtocol(t, translated, fixture)
+			if name == "full/player_auth_input" {
+				if len(native) != 1 || len(compat) != 1 || !singleByteInsertionMatches(native[0], compat[0], fixture.(*packet.PlayerAuthInput).ItemInteractionData) {
+					t.Fatalf("protocol 2192 PlayerAuthInput did not differ solely by the upstream-missing Hand byte\nnative:     %x\ntranslated: %x", native, compat)
+				}
+				assertProtocolRoundTrip(t, translated, fixture.ID(), compat)
+				return
+			}
 			if !reflect.DeepEqual(native, compat) {
-				t.Fatalf("protocol 2168 output differs\nnative:     %x\ntranslated: %x", native, compat)
+				nativePacket, compatPacket := native[0], compat[0]
+				diff := min(len(nativePacket), len(compatPacket))
+				for i := range diff {
+					if nativePacket[i] != compatPacket[i] {
+						diff = i
+						break
+					}
+				}
+				t.Fatalf("protocol 2192 output differs at byte %d (lengths %d/%d)\nnative:     %x\ntranslated: %x", diff, len(nativePacket), len(compatPacket), native, compat)
 			}
 			assertProtocolRoundTrip(t, translated, fixture.ID(), native)
 		})
@@ -170,19 +209,32 @@ func TestProtocol2168TranslationMatchesGophertunnelProtocol(t *testing.T) {
 		parameter.Marshal(minecraft.DefaultProtocol.NewWriter(&native, 0))
 		legacyproto.MarshalCommandParameter(translated.NewWriter(&compatible, 0), &parameter)
 		if !bytes.Equal(native.Bytes(), compatible.Bytes()) {
-			t.Fatalf("protocol 2168 command parameter differs\nnative:     %x\ntranslated: %x", native.Bytes(), compatible.Bytes())
+			t.Fatalf("protocol 2192 command parameter differs\nnative:     %x\ntranslated: %x", native.Bytes(), compatible.Bytes())
 		}
 		decoded := protocol.CommandParameter{}
 		readerBuffer := bytes.NewBuffer(native.Bytes())
 		legacyproto.MarshalCommandParameter(translated.NewReader(readerBuffer, 0, true), &decoded)
 		if readerBuffer.Len() != 0 {
-			t.Fatalf("protocol 2168 command parameter left %d bytes unread", readerBuffer.Len())
+			t.Fatalf("protocol 2192 command parameter left %d bytes unread", readerBuffer.Len())
 		}
 	})
 }
 
-func TestProtocol2168AllEmptyPacketsMatchGophertunnel(t *testing.T) {
-	translated := &Protocol{id: legacyproto.ID2168, ver: "1.26.40"}
+func singleByteInsertionMatches(native, corrected []byte, interaction protocol.Optional[protocol.UseItemTransactionData]) bool {
+	data, ok := interaction.Value()
+	if !ok || len(corrected) != len(native)+1 {
+		return false
+	}
+	for i, value := range corrected {
+		if value == data.Hand && bytes.Equal(corrected[:i], native[:i]) && bytes.Equal(corrected[i+1:], native[i:]) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestProtocol2192AllEmptyPacketsMatchGophertunnel(t *testing.T) {
+	translated := &Protocol{id: legacyproto.ID2192, ver: "1.26.50"}
 	for _, listener := range []bool{false, true} {
 		direction := "server"
 		if listener {
@@ -190,7 +242,7 @@ func TestProtocol2168AllEmptyPacketsMatchGophertunnel(t *testing.T) {
 		}
 		for id, constructor := range minecraft.DefaultProtocol.Packets(listener) {
 			pk := constructor()
-			initialiseCurrentEmptyPacket(pk, legacyproto.ID2168)
+			initialiseCurrentEmptyPacket(pk, legacyproto.ID2192)
 			t.Run(fmt.Sprintf("%s/%d/%T", direction, id, pk), func(t *testing.T) {
 				native, err := tryMarshalNative(pk)
 				if err != nil {
@@ -198,7 +250,7 @@ func TestProtocol2168AllEmptyPacketsMatchGophertunnel(t *testing.T) {
 				}
 				compatible := marshalCompatibilityPacket(t, translated, pk)
 				if !bytes.Equal(native, compatible) {
-					t.Fatalf("protocol 2168 empty packet differs\nnative:     %x\ntranslated: %x", native, compatible)
+					t.Fatalf("protocol 2192 empty packet differs\nnative:     %x\ntranslated: %x", native, compatible)
 				}
 				assertProtocolRoundTrip(t, translated, id, [][]byte{native})
 			})
@@ -206,8 +258,8 @@ func TestProtocol2168AllEmptyPacketsMatchGophertunnel(t *testing.T) {
 	}
 }
 
-func TestProtocol2168AllPopulatedCollectionsMatchGophertunnel(t *testing.T) {
-	translated := &Protocol{id: legacyproto.ID2168, ver: "1.26.40"}
+func TestProtocol2192AllPopulatedCollectionsMatchGophertunnel(t *testing.T) {
+	translated := &Protocol{id: legacyproto.ID2192, ver: "1.26.50"}
 	for _, listener := range []bool{false, true} {
 		direction := "server"
 		if listener {
@@ -215,17 +267,24 @@ func TestProtocol2168AllPopulatedCollectionsMatchGophertunnel(t *testing.T) {
 		}
 		for id, constructor := range minecraft.DefaultProtocol.Packets(listener) {
 			pk := constructor()
-			initialiseCurrentEmptyPacket(pk, legacyproto.ID2168)
-			populateCollectionFields(reflect.ValueOf(pk), false, 0)
-			normalisePopulatedPacket(pk, legacyproto.ID2168)
+			initialiseCurrentEmptyPacket(pk, legacyproto.ID2192)
+			populateCollectionFields(reflect.ValueOf(pk), false, true, 0)
+			normalisePopulatedPacket(pk, legacyproto.ID2192)
 			t.Run(fmt.Sprintf("%s/%d/%T", direction, id, pk), func(t *testing.T) {
 				native, err := tryMarshalNative(pk)
 				if err != nil {
 					t.Fatalf("populated native packet is invalid: %v", err)
 				}
 				compatible := marshalCompatibilityPacket(t, translated, pk)
+				if playerAuthInput, ok := pk.(*packet.PlayerAuthInput); ok {
+					if !singleByteInsertionMatches(native, compatible, playerAuthInput.ItemInteractionData) {
+						t.Fatalf("protocol 2192 PlayerAuthInput did not differ solely by the upstream-missing Hand byte\nnative:     %x\ntranslated: %x", native, compatible)
+					}
+					assertProtocolRoundTrip(t, translated, id, [][]byte{compatible})
+					return
+				}
 				if !bytes.Equal(native, compatible) {
-					t.Fatalf("protocol 2168 populated packet differs\nnative:     %x\ntranslated: %x", native, compatible)
+					t.Fatalf("protocol 2192 populated packet differs\nnative:     %x\ntranslated: %x", native, compatible)
 				}
 				assertProtocolRoundTrip(t, translated, id, [][]byte{native})
 			})
@@ -233,28 +292,38 @@ func TestProtocol2168AllPopulatedCollectionsMatchGophertunnel(t *testing.T) {
 	}
 }
 
-func populateCollectionFields(value reflect.Value, inCollection bool, depth int) {
+func populateCollectionFields(value reflect.Value, inCollection, fillOptionals bool, depth int) {
 	if !value.IsValid() || depth > 12 {
 		return
 	}
 	if value.Kind() == reflect.Pointer {
 		if value.IsNil() {
-			return
+			if !inCollection || !value.CanSet() {
+				return
+			}
+			value.Set(reflect.New(value.Type().Elem()))
 		}
-		populateCollectionFields(value.Elem(), inCollection, depth+1)
+		populateCollectionFields(value.Elem(), inCollection, fillOptionals, depth+1)
 		return
 	}
 	if value.Kind() == reflect.Interface {
 		if !value.IsNil() {
-			populateCollectionFields(value.Elem(), inCollection, depth+1)
+			populateCollectionFields(value.Elem(), inCollection, fillOptionals, depth+1)
 		}
 		return
 	}
 	switch value.Kind() {
 	case reflect.Struct:
+		if fillOptionals && strings.HasPrefix(value.Type().Name(), "Optional[") && value.NumField() == 2 && value.CanAddr() {
+			set := reflect.NewAt(value.Field(0).Type(), unsafe.Pointer(value.Field(0).UnsafeAddr())).Elem()
+			set.SetBool(true)
+			optionalValue := reflect.NewAt(value.Field(1).Type(), unsafe.Pointer(value.Field(1).UnsafeAddr())).Elem()
+			populateCollectionFields(optionalValue, true, fillOptionals, depth+1)
+			return
+		}
 		for i := 0; i < value.NumField(); i++ {
 			if value.Field(i).CanSet() {
-				populateCollectionFields(value.Field(i), inCollection, depth+1)
+				populateCollectionFields(value.Field(i), inCollection, fillOptionals, depth+1)
 			}
 		}
 	case reflect.Slice:
@@ -262,22 +331,36 @@ func populateCollectionFields(value reflect.Value, inCollection bool, depth int)
 			value.Set(reflect.MakeSlice(value.Type(), 1, 1))
 		}
 		for i := 0; i < value.Len(); i++ {
-			populateCollectionFields(value.Index(i), true, depth+1)
+			populateCollectionFields(value.Index(i), true, fillOptionals, depth+1)
 		}
 	case reflect.Array:
 		for i := 0; i < value.Len(); i++ {
-			populateCollectionFields(value.Index(i), true, depth+1)
+			populateCollectionFields(value.Index(i), true, fillOptionals, depth+1)
 		}
 	case reflect.Map:
-		if value.Type().Elem().Kind() == reflect.Interface {
-			value.Set(reflect.MakeMap(value.Type()))
-			switch value.Type().Key().Kind() {
-			case reflect.String:
-				value.SetMapIndex(reflect.ValueOf("dummy").Convert(value.Type().Key()), reflect.ValueOf(int32(1)))
-			case reflect.Uint32:
-				value.SetMapIndex(reflect.ValueOf(uint32(1)).Convert(value.Type().Key()), reflect.ValueOf(byte(1)))
-			}
+		value.Set(reflect.MakeMap(value.Type()))
+		key := reflect.New(value.Type().Key()).Elem()
+		switch key.Kind() {
+		case reflect.String:
+			key.SetString("dummy")
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			key.SetInt(1)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			key.SetUint(1)
+		default:
+			return
 		}
+		if value.Type().Elem().Kind() == reflect.Interface {
+			mapValue := reflect.ValueOf(int32(1))
+			if key.Kind() == reflect.Uint32 {
+				mapValue = reflect.ValueOf(byte(1))
+			}
+			value.SetMapIndex(key, mapValue)
+			return
+		}
+		element := reflect.New(value.Type().Elem()).Elem()
+		populateCollectionFields(element, true, fillOptionals, depth+1)
+		value.SetMapIndex(key, element)
 	case reflect.String:
 		if inCollection && value.Len() == 0 {
 			value.SetString("dummy")
@@ -296,6 +379,12 @@ func populateCollectionFields(value reflect.Value, inCollection bool, depth int)
 func normalisePopulatedPacket(pk packet.Packet, protocolID int32) {
 	initialiseCurrentEmptyPacket(pk, protocolID)
 	switch pk := pk.(type) {
+	case *packet.PlayerAuthInput:
+		pk.ItemInteractionData = protocol.Option(protocol.UseItemTransactionData{Actions: []protocol.InventoryAction{}, Hand: protocol.HandSlotOffHand})
+		pk.ItemStackRequest = protocol.Option(protocol.ItemStackRequest{Actions: []protocol.StackRequestAction{&protocol.TakeStackRequestAction{}}, FilterStrings: []string{"dummy"}})
+		pk.BlockActions = protocol.Option([]protocol.PlayerBlockAction{{Action: protocol.PlayerActionStartBreak}})
+		pk.VehicleRotation = protocol.Option(mgl32.Vec2{1, 2})
+		pk.ClientPredictedVehicle = protocol.Option(int64(1))
 	case *packet.PlayerList:
 		pk.Entries = []protocol.PlayerListEntry{
 			{ActionType: protocol.PlayerListActionAdd, Username: "trusted", Skin: validDummySkin(true)},
@@ -310,7 +399,7 @@ func normalisePopulatedPacket(pk packet.Packet, protocolID int32) {
 	case *packet.SubChunk:
 		pk.SubChunkEntries = []protocol.SubChunkEntry{{Result: protocol.SubChunkResultSuccess, RawPayload: protocol.Option([]byte{1})}}
 	case *packet.CraftingData:
-		normaliseCurrentCraftingData(pk)
+		normaliseCurrentCraftingData(pk, protocolID)
 	case *packet.GameRulesChanged:
 		pk.GameRules = []protocol.GameRule{{Name: "dummy", Value: false}}
 	case *packet.SetScore:
@@ -328,26 +417,44 @@ func normalisePopulatedPacket(pk packet.Packet, protocolID int32) {
 	}
 }
 
-func normaliseCurrentCraftingData(pk *packet.CraftingData) {
+func normaliseCurrentCraftingData(pk *packet.CraftingData, protocolID int32) {
 	descriptor := func() protocol.ItemDescriptorCount {
 		return protocol.ItemDescriptorCount{Descriptor: &protocol.InvalidItemDescriptor{}, Count: 1}
+	}
+	unlock := func() protocol.Optional[protocol.RecipeUnlockRequirement] {
+		return protocol.Option(protocol.RecipeUnlockRequirement{Context: protocol.RecipeUnlockContextNone, Ingredients: []protocol.ItemDescriptorCount{descriptor()}})
 	}
 	for i := range pk.ShapedRecipes {
 		pk.ShapedRecipes[i].Width, pk.ShapedRecipes[i].Height = 1, 1
 		pk.ShapedRecipes[i].Input = []protocol.ItemDescriptorCount{descriptor()}
+		if protocolID >= legacyproto.ID2168 {
+			pk.ShapedRecipes[i].UnlockRequirement = unlock()
+		}
 	}
 	for i := range pk.ShapelessRecipes {
 		pk.ShapelessRecipes[i].Input = []protocol.ItemDescriptorCount{descriptor()}
+		if protocolID >= legacyproto.ID2168 {
+			pk.ShapelessRecipes[i].UnlockRequirement = unlock()
+		}
 	}
-	for i := range pk.ShulkerBoxRecipes {
-		pk.ShulkerBoxRecipes[i].Input = []protocol.ItemDescriptorCount{descriptor()}
+	for i := range pk.UserDataShapelessRecipes {
+		pk.UserDataShapelessRecipes[i].Input = []protocol.ItemDescriptorCount{descriptor()}
+		if protocolID >= legacyproto.ID2168 {
+			pk.UserDataShapelessRecipes[i].UnlockRequirement = unlock()
+		}
 	}
 	for i := range pk.ShapelessChemistryRecipes {
 		pk.ShapelessChemistryRecipes[i].Input = []protocol.ItemDescriptorCount{descriptor()}
+		if protocolID >= legacyproto.ID2168 {
+			pk.ShapelessChemistryRecipes[i].UnlockRequirement = unlock()
+		}
 	}
 	for i := range pk.ShapedChemistryRecipes {
 		pk.ShapedChemistryRecipes[i].Width, pk.ShapedChemistryRecipes[i].Height = 1, 1
 		pk.ShapedChemistryRecipes[i].Input = []protocol.ItemDescriptorCount{descriptor()}
+		if protocolID >= legacyproto.ID2168 {
+			pk.ShapedChemistryRecipes[i].UnlockRequirement = unlock()
+		}
 	}
 	for i := range pk.SmithingTransformRecipes {
 		pk.SmithingTransformRecipes[i].Template = descriptor()
@@ -458,7 +565,7 @@ func TestProtocol1001TranslationMatchesNativeGophertunnel(t *testing.T) {
 			Delta: [3]float32{.1, .2, .3}, AnalogueMoveVector: [2]float32{.4, .5},
 			CameraOrientation: [3]float32{0, 1, 0}, RawMoveVector: [2]float32{-.25, .75},
 			ItemInteractionData: protocol.Option(protocol.UseItemTransactionData{
-				Actions: protocol.Option([]protocol.InventoryAction{}), ActionType: protocol.UseItemActionClickBlock,
+				Actions: []protocol.InventoryAction{}, ActionType: protocol.UseItemActionClickBlock,
 				TriggerType: protocol.TriggerTypePlayerInput, BlockPosition: protocol.BlockPos{10, 64, -10},
 				BlockFace: 2, HotBarSlot: 3, Position: [3]float32{10.5, 65, -9.5},
 				ClickedPosition: [3]float32{.5, 1, .5}, BlockRuntimeID: 42,
@@ -648,7 +755,7 @@ func TestProtocol1001TranslationMatchesNativeGophertunnel(t *testing.T) {
 			pk := constructor()
 			initialiseCurrentEmptyPacket(pk, legacyproto.ID1001)
 			if populated {
-				populateCollectionFields(reflect.ValueOf(pk), false, 0)
+				populateCollectionFields(reflect.ValueOf(pk), false, false, 0)
 				normalisePopulatedPacket(pk, legacyproto.ID1001)
 			}
 			got := marshalCompatibilityPacket(t, translated, pk)
@@ -677,6 +784,7 @@ func TestHistoricalProtocolMatrixMatchesNativeGophertunnel(t *testing.T) {
 		{924, New924(), "historical_entity_flags,historical_shapes,legacy_camera_spline"},
 		{944, New944(), "historical_entity_flags,historical_shapes,current_camera_spline"},
 		{975, New975(), "historical_entity_flags,modern_shapes,current_camera_spline"},
+		{2168, New2168(), "protocol2168,historical_entity_flags,modern_shapes,current_camera_spline"},
 	}
 	for _, test := range tests {
 		t.Run(strconv.Itoa(int(test.id)), func(t *testing.T) {
@@ -703,7 +811,7 @@ func TestHistoricalProtocolMatrixMatchesNativeGophertunnel(t *testing.T) {
 					pk := constructor()
 					initialiseCurrentEmptyPacket(pk, test.id)
 					if populated {
-						populateCollectionFields(reflect.ValueOf(pk), false, 0)
+						populateCollectionFields(reflect.ValueOf(pk), false, test.id == legacyproto.ID2168, 0)
 						normalisePopulatedPacket(pk, test.id)
 					}
 					got := marshalCompatibilityPacket(t, test.protocol, pk)
@@ -812,18 +920,18 @@ func native1001Reference(t *testing.T) map[string][]byte {
 	return decoded
 }
 
-func TestStartGame2168MarshalsLikeLatest(t *testing.T) {
+func TestStartGame2192MarshalsLikeLatest(t *testing.T) {
 	var native, compatible bytes.Buffer
 	latest := &packet.StartGame{}
 	translated := &packet.StartGame{}
 	latest.Marshal(protocol.NewWriter(&native, 0))
 	legacypacket.StartGame(
-		legacyproto.NewWriter(protocol.NewWriter(&compatible, 0), legacyproto.ID2168, 0),
+		legacyproto.NewWriter(protocol.NewWriter(&compatible, 0), legacyproto.ID2192, 0),
 		translated,
 		nil,
 	)
 	if !bytes.Equal(native.Bytes(), compatible.Bytes()) {
-		t.Fatalf("1.26.40 StartGame marshal differs from latest\nnative:     %x\ncompatible: %x", native.Bytes(), compatible.Bytes())
+		t.Fatalf("1.26.50 StartGame marshal differs from latest\nnative:     %x\ncompatible: %x", native.Bytes(), compatible.Bytes())
 	}
 }
 

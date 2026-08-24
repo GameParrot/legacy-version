@@ -15,7 +15,11 @@ func MarshalSubChunkEntry(r protocol.IO, x *protocol.SubChunkEntry) {
 	r.Uint8(&x.HeightMapType)
 	if IsProtoGTE(r, ID2168) {
 		protocol.OptionalFunc(r, &x.HeightMapData, func(data *[]int8) {
-			protocol.FuncSliceOfLen(r, 256, data, r.Int8)
+			length := uint32(256)
+			if IsProtoGTE(r, ID2192) {
+				length = 272
+			}
+			protocol.FuncSliceOfLen(r, length, data, r.Int8)
 		})
 	} else if x.HeightMapType == protocol.HeightMapDataHasData {
 		data, _ := x.HeightMapData.Value()
@@ -26,7 +30,11 @@ func MarshalSubChunkEntry(r protocol.IO, x *protocol.SubChunkEntry) {
 		r.Uint8(&x.RenderHeightMapType)
 		if IsProtoGTE(r, ID2168) {
 			protocol.OptionalFunc(r, &x.RenderHeightMapData, func(data *[]int8) {
-				protocol.FuncSliceOfLen(r, 256, data, r.Int8)
+				length := uint32(256)
+				if IsProtoGTE(r, ID2192) {
+					length = 272
+				}
+				protocol.FuncSliceOfLen(r, length, data, r.Int8)
 			})
 		} else if x.RenderHeightMapType == protocol.HeightMapDataHasData {
 			data, _ := x.RenderHeightMapData.Value()

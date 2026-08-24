@@ -1,9 +1,69 @@
 package proto
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/sandertv/gophertunnel/minecraft/protocol"
 )
+
+func MarshalPackSetting(r protocol.IO, x *protocol.PackSetting) {
+	r.String(&x.Name)
+	if IsReader(r) {
+		var valueType uint32
+		r.Varuint32(&valueType)
+		switch valueType {
+		case protocol.PackSettingTypeFloat:
+			var value float32
+			r.Float32(&value)
+			x.Value = value
+		case protocol.PackSettingTypeBool:
+			var value bool
+			r.Bool(&value)
+			x.Value = value
+		case protocol.PackSettingTypeString:
+			var value string
+			r.String(&value)
+			x.Value = value
+		case protocol.PackSettingTypeStringList:
+			if IsProtoLT(r, ID2192) {
+				r.UnknownEnumOption(valueType, "pack setting")
+				return
+			}
+			var value []string
+			protocol.FuncSlice(r, &value, r.String)
+			x.Value = value
+		default:
+			r.UnknownEnumOption(valueType, "pack setting")
+		}
+		return
+	}
+	var valueType uint32
+	switch value := x.Value.(type) {
+	case float32:
+		valueType = protocol.PackSettingTypeFloat
+		r.Varuint32(&valueType)
+		r.Float32(&value)
+	case bool:
+		valueType = protocol.PackSettingTypeBool
+		r.Varuint32(&valueType)
+		r.Bool(&value)
+	case string:
+		valueType = protocol.PackSettingTypeString
+		r.Varuint32(&valueType)
+		r.String(&value)
+	case []string:
+		if IsProtoLT(r, ID2192) {
+			r.UnknownEnumOption(fmt.Sprintf("%T", x.Value), "pack setting")
+			return
+		}
+		valueType = protocol.PackSettingTypeStringList
+		r.Varuint32(&valueType)
+		protocol.FuncSlice(r, &value, r.String)
+	default:
+		r.UnknownEnumOption(fmt.Sprintf("%T", x.Value), "pack setting")
+	}
+}
 
 func MarshalTexturePackInfo(r protocol.IO, x *protocol.TexturePackInfo) {
 	if IsProtoGTE(r, ID766) {

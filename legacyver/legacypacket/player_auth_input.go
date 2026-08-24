@@ -14,8 +14,16 @@ func PlayerAuthInput(io protocol.IO, pk *packet.PlayerAuthInput) {
 	io.Vec3(&pk.Position)
 	io.Vec2(&pk.MoveVector)
 	io.Float32(&pk.HeadYaw)
-	if proto.IsProtoGTE(io, proto.ID2168) {
+	if proto.IsProtoGTE(io, proto.ID2192) {
 		protocol.InputFlagList(io, &pk.InputData, packet.InputFlagCount)
+	} else if proto.IsProtoGTE(io, proto.ID2168) {
+		present := pk.InputData.Present()
+		io.Bool(&present)
+		if present {
+			protocol.InputFlagList(io, &pk.InputData, packet.InputFlagCount)
+		} else if proto.IsReader(io) {
+			pk.InputData = protocol.InputFlags{}
+		}
 	} else {
 		size := 64
 		if proto.IsProtoGTE(io, proto.ID766) {
@@ -39,7 +47,11 @@ func PlayerAuthInput(io protocol.IO, pk *packet.PlayerAuthInput) {
 	io.Varuint64(&pk.Tick)
 	io.Vec3(&pk.Delta)
 	if proto.IsProtoGTE(io, proto.ID2168) {
-		protocol.DoubleOptionalFunc(io, &pk.ItemInteractionData, func(x *protocol.UseItemTransactionData) {
+		marshal := protocol.OptionalFunc[protocol.UseItemTransactionData]
+		if proto.IsProtoLT(io, proto.ID2192) {
+			marshal = proto.DoubleOptionalFunc[protocol.UseItemTransactionData]
+		}
+		marshal(io, &pk.ItemInteractionData, func(x *protocol.UseItemTransactionData) {
 			proto.PlayerInventoryAction(io, x)
 		})
 	} else if pk.InputData.Load(packet.InputFlagPerformItemInteraction) {
@@ -48,7 +60,11 @@ func PlayerAuthInput(io protocol.IO, pk *packet.PlayerAuthInput) {
 		pk.ItemInteractionData = protocol.Option(x)
 	}
 	if proto.IsProtoGTE(io, proto.ID2168) {
-		protocol.DoubleOptionalFunc(io, &pk.ItemStackRequest, func(x *protocol.ItemStackRequest) {
+		marshal := protocol.OptionalFunc[protocol.ItemStackRequest]
+		if proto.IsProtoLT(io, proto.ID2192) {
+			marshal = proto.DoubleOptionalFunc[protocol.ItemStackRequest]
+		}
+		marshal(io, &pk.ItemStackRequest, func(x *protocol.ItemStackRequest) {
 			proto.MarshalItemStackRequest(io, x)
 		})
 	} else if pk.InputData.Load(packet.InputFlagPerformItemStackRequest) {
@@ -57,7 +73,11 @@ func PlayerAuthInput(io protocol.IO, pk *packet.PlayerAuthInput) {
 		pk.ItemStackRequest = protocol.Option(x)
 	}
 	if proto.IsProtoGTE(io, proto.ID2168) {
-		protocol.DoubleOptionalFunc(io, &pk.BlockActions, func(x *[]protocol.PlayerBlockAction) {
+		marshal := protocol.OptionalFunc[[]protocol.PlayerBlockAction]
+		if proto.IsProtoLT(io, proto.ID2192) {
+			marshal = proto.DoubleOptionalFunc[[]protocol.PlayerBlockAction]
+		}
+		marshal(io, &pk.BlockActions, func(x *[]protocol.PlayerBlockAction) {
 			protocol.FuncIOSlice(io, x, proto.MarshalPlayerBlockAction)
 		})
 	} else if pk.InputData.Load(packet.InputFlagPerformBlockActions) {
@@ -67,9 +87,12 @@ func PlayerAuthInput(io protocol.IO, pk *packet.PlayerAuthInput) {
 		protocol.FuncIOSliceOfLen(io, uint32(count), &x, proto.MarshalPlayerBlockAction)
 		pk.BlockActions = protocol.Option(x)
 	}
-	if proto.IsProtoGTE(io, proto.ID2168) {
-		protocol.DoubleOptionalFunc(io, &pk.VehicleRotation, io.Vec2)
-		protocol.DoubleOptionalFunc(io, &pk.ClientPredictedVehicle, io.Varint64)
+	if proto.IsProtoGTE(io, proto.ID2192) {
+		protocol.OptionalFunc(io, &pk.VehicleRotation, io.Vec2)
+		protocol.OptionalFunc(io, &pk.ClientPredictedVehicle, io.Varint64)
+	} else if proto.IsProtoGTE(io, proto.ID2168) {
+		proto.DoubleOptionalFunc(io, &pk.VehicleRotation, io.Vec2)
+		proto.DoubleOptionalFunc(io, &pk.ClientPredictedVehicle, io.Varint64)
 	} else if pk.InputData.Load(packet.InputFlagClientPredictedVehicle) {
 		if proto.IsProtoGTE(io, proto.ID662) {
 			x, _ := pk.VehicleRotation.Value()

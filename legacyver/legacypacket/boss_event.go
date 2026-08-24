@@ -7,9 +7,27 @@ import (
 )
 
 func BossEvent(io protocol.IO, pk *packet.BossEvent) {
+	var playerUniqueID int64
+	marshalBossEvent(io, pk, &playerUniqueID)
+}
+
+type TranslatedBossEvent struct {
+	Pk             *packet.BossEvent
+	PlayerUniqueID int64
+}
+
+func (pk *TranslatedBossEvent) ID() uint32 { return packet.IDBossEvent }
+
+func (pk *TranslatedBossEvent) Marshal(io protocol.IO) {
+	marshalBossEvent(io, pk.Pk, &pk.PlayerUniqueID)
+}
+
+func marshalBossEvent(io protocol.IO, pk *packet.BossEvent, playerUniqueID *int64) {
 	io.Varint64(&pk.BossEntityUniqueID)
 	if proto.IsProtoGTE(io, proto.ID1001) {
-		io.Varint64(&pk.PlayerUniqueID)
+		if proto.IsProtoLT(io, proto.ID2192) {
+			io.Varint64(playerUniqueID)
+		}
 		io.Uint8(&pk.EventType)
 		io.String(&pk.BossBarTitle)
 		io.String(&pk.FilteredBossBarTitle)
@@ -31,7 +49,7 @@ func BossEvent(io protocol.IO, pk *packet.BossEvent) {
 		legacyBossEventColour(io, &pk.Colour)
 		protocol.IntegerFunc(&pk.Overlay, io.Varuint32)
 	case packet.BossEventRegisterPlayer, packet.BossEventUnregisterPlayer, packet.BossEventRequest:
-		io.Varint64(&pk.PlayerUniqueID)
+		io.Varint64(playerUniqueID)
 	case packet.BossEventHide:
 		// No extra payload for this boss event type.
 	case packet.BossEventHealthPercentage:

@@ -31,6 +31,9 @@ func MoveActorDelta(io protocol.IO, pk *packet.MoveActorDelta) {
 		io.Bool(&pk.ForceMove)
 		io.Bool(&pk.ForceMoveLocalEntity)
 		io.Bool(&pk.ForceCompletion)
+		if proto.IsProtoGTE(io, proto.ID2192) {
+			io.Varuint64(&pk.Ticks)
+		}
 		return
 	}
 	flags := uint16(0)

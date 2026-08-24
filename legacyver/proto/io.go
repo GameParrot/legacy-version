@@ -63,6 +63,19 @@ func EmptySlice[T any](io protocol.IO, slice *[]T) {
 	}
 }
 
+// DoubleOptionalFunc reads/writes the pre-1.26.50 optional value nested in an
+// always-present outer optional. Gophertunnel removed this wire shape in 1.26.50.
+func DoubleOptionalFunc[T any](r protocol.IO, x *protocol.Optional[T], f func(*T)) any {
+	outer := true
+	r.Bool(&outer)
+	if outer {
+		protocol.OptionalFunc(r, x, f)
+	} else {
+		*x = protocol.Optional[T]{}
+	}
+	return x
+}
+
 func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 	io.Varint32(&x.LegacyRequestID)
 	if IsProtoGTE(io, ID2168) {
@@ -74,14 +87,19 @@ func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 		protocol.FuncIOSlice(io, &items, marshalLegacySetItemSlot)
 		x.LegacySetItemSlots = protocol.Option(items)
 	}
-	if IsProtoGTE(io, ID2168) {
-		protocol.DoubleOptionalFunc(io, &x.Actions, func(actions *[]protocol.InventoryAction) {
+	if IsProtoGTE(io, ID2192) {
+		protocol.FuncIOSlice(io, &x.Actions, MarshalInventoryAction)
+	} else if IsProtoGTE(io, ID2168) {
+		actions := protocol.Optional[[]protocol.InventoryAction]{}
+		if x.Actions != nil {
+			actions = protocol.Option(x.Actions)
+		}
+		DoubleOptionalFunc(io, &actions, func(actions *[]protocol.InventoryAction) {
 			protocol.FuncIOSlice(io, actions, MarshalInventoryAction)
 		})
+		x.Actions, _ = actions.Value()
 	} else {
-		actions, _ := x.Actions.Value()
-		protocol.FuncIOSlice(io, &actions, marshalLegacyPlayerInventoryAction)
-		x.Actions = protocol.Option(actions)
+		protocol.FuncIOSlice(io, &x.Actions, marshalLegacyPlayerInventoryAction)
 	}
 	if IsProtoGTE(io, ID2168) {
 		protocol.IntegerFunc(&x.ActionType, io.Varint32)
@@ -99,6 +117,12 @@ func PlayerInventoryAction(io protocol.IO, x *protocol.UseItemTransactionData) {
 		io.Varint32(&x.BlockFace)
 	}
 	io.Varint32(&x.HotBarSlot)
+	if IsProtoGTE(io, ID2192) {
+		// The feature/26.50 Gophertunnel PlayerInventoryAction writer currently
+		// omits this field even though UseItemTransactionData gained it. Treat
+		// that omission as an upstream bug and keep the 26.50 wire field here.
+		io.Uint8(&x.Hand)
+	}
 	io.ItemInstance(&x.HeldItem)
 	io.Vec3(&x.Position)
 	io.Vec3(&x.ClickedPosition)

@@ -73,9 +73,14 @@ func MarshalItemStackResponse(r protocol.IO, x *protocol.ItemStackResponse) {
 		if len(x.ContainerInfo) != 0 {
 			containerInfo = protocol.Option(x.ContainerInfo)
 		}
-		protocol.DoubleOptionalFunc(r, &containerInfo, func(entries *[]protocol.StackResponseContainerInfo) {
+		marshalEntries := func(entries *[]protocol.StackResponseContainerInfo) {
 			protocol.FuncIOSlice(r, entries, MarshalStackResponseContainerInfo)
-		})
+		}
+		if IsProtoGTE(r, ID2192) {
+			protocol.OptionalFunc(r, &containerInfo, marshalEntries)
+		} else {
+			DoubleOptionalFunc(r, &containerInfo, marshalEntries)
+		}
 		if entries, ok := containerInfo.Value(); ok {
 			x.ContainerInfo = entries
 		}
@@ -98,7 +103,11 @@ func MarshalStackResponseSlotInfo(r protocol.IO, x *protocol.StackResponseSlotIn
 		if x.StackNetworkID > 0 {
 			stackNetworkID = protocol.Option(x.StackNetworkID)
 		}
-		protocol.DoubleOptionalFunc(r, &stackNetworkID, r.Varint32)
+		if IsProtoGTE(r, ID2192) {
+			protocol.OptionalFunc(r, &stackNetworkID, r.Varint32)
+		} else {
+			DoubleOptionalFunc(r, &stackNetworkID, r.Varint32)
+		}
 		if value, ok := stackNetworkID.Value(); ok {
 			x.StackNetworkID = value
 		}

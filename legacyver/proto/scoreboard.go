@@ -19,7 +19,11 @@ func MarshalScoreboardEntry(r protocol.IO, x *protocol.ScoreboardEntry) {
 		if x.ObjectiveName != "" {
 			objective = protocol.Option(x.ObjectiveName)
 		}
-		protocol.OptionalFunc(r, &objective, r.String)
+		if IsProtoGTE(r, ID2192) {
+			protocol.OptionalFunc(r, &objective, r.String)
+		} else {
+			DoubleOptionalFunc(r, &objective, r.String)
+		}
 		x.ObjectiveName, _ = objective.Value()
 		return
 	}

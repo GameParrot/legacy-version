@@ -38,6 +38,9 @@ func MarshalUseItemTransactionData(r protocol.IO, x *protocol.UseItemTransaction
 		r.Varint32(&x.BlockFace)
 	}
 	r.Varint32(&x.HotBarSlot)
+	if IsProtoGTE(r, ID2192) {
+		r.Uint8(&x.Hand)
+	}
 	if IsProtoGTE(r, ID1001) {
 		ItemInstanceNew(r, &x.HeldItem)
 	} else {
@@ -88,9 +91,12 @@ func MarshalUseItemOnEntityTransactionData(r protocol.IO, data *protocol.UseItem
 
 func MarshalInventoryAction(r protocol.IO, x *protocol.InventoryAction) {
 	r.Varuint32(&x.SourceType)
-	if IsProtoGTE(r, ID2168) {
-		protocol.DoubleOptionalFunc(r, &x.WindowID, r.Int8)
-		protocol.DoubleOptionalFunc(r, &x.SourceFlags, r.Varuint32)
+	if IsProtoGTE(r, ID2192) {
+		protocol.OptionalFunc(r, &x.WindowID, r.Int8)
+		protocol.OptionalFunc(r, &x.SourceFlags, r.Varuint32)
+	} else if IsProtoGTE(r, ID2168) {
+		DoubleOptionalFunc(r, &x.WindowID, r.Int8)
+		DoubleOptionalFunc(r, &x.SourceFlags, r.Varuint32)
 	} else if IsProtoGTE(r, ID1001) {
 		present := true
 		r.Bool(&present)

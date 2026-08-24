@@ -25,7 +25,9 @@ func MarshalCraftingData(r protocol.IO, pk *packet.CraftingData) {
 		protocol.FuncIOSlice(r, &pk.ShapedRecipes, MarshalShapedRecipe)
 		protocol.FuncIOSlice(r, &pk.ShapelessRecipes, MarshalShapelessRecipe)
 		protocol.FuncIOSlice(r, &pk.MultiRecipes, marshalMultiRecipe)
-		protocol.FuncIOSlice(r, &pk.ShulkerBoxRecipes, func(r protocol.IO, x *protocol.ShulkerBoxRecipe) { MarshalShapelessRecipe(r, &x.ShapelessRecipe) })
+		protocol.FuncIOSlice(r, &pk.UserDataShapelessRecipes, func(r protocol.IO, x *protocol.UserDataShapelessRecipe) {
+			MarshalShapelessRecipe(r, &x.ShapelessRecipe)
+		})
 		protocol.FuncIOSlice(r, &pk.ShapelessChemistryRecipes, func(r protocol.IO, x *protocol.ShapelessChemistryRecipe) {
 			MarshalShapelessRecipe(r, &x.ShapelessRecipe)
 		})
@@ -54,9 +56,9 @@ func MarshalCraftingData(r protocol.IO, pk *packet.CraftingData) {
 				marshalMultiRecipe(r, &x)
 				pk.MultiRecipes = append(pk.MultiRecipes, x)
 			case recipeShulkerBox:
-				var x protocol.ShulkerBoxRecipe
+				var x protocol.UserDataShapelessRecipe
 				MarshalShapelessRecipe(r, &x.ShapelessRecipe)
-				pk.ShulkerBoxRecipes = append(pk.ShulkerBoxRecipes, x)
+				pk.UserDataShapelessRecipes = append(pk.UserDataShapelessRecipes, x)
 			case recipeShapelessChemistry:
 				var x protocol.ShapelessChemistryRecipe
 				MarshalShapelessRecipe(r, &x.ShapelessRecipe)
@@ -82,7 +84,7 @@ func MarshalCraftingData(r protocol.IO, pk *packet.CraftingData) {
 		}
 		return
 	}
-	count := len(pk.ShapelessRecipes) + len(pk.ShapedRecipes) + len(pk.MultiRecipes) + len(pk.ShulkerBoxRecipes) +
+	count := len(pk.ShapelessRecipes) + len(pk.ShapedRecipes) + len(pk.MultiRecipes) + len(pk.UserDataShapelessRecipes) +
 		len(pk.ShapelessChemistryRecipes) + len(pk.ShapedChemistryRecipes) + len(pk.SmithingTransformRecipes) + len(pk.SmithingTrimRecipes)
 	count32 := uint32(count)
 	r.Varuint32(&count32)
@@ -98,9 +100,9 @@ func MarshalCraftingData(r protocol.IO, pk *packet.CraftingData) {
 		writeRecipeType(r, recipeMulti)
 		marshalMultiRecipe(r, &pk.MultiRecipes[i])
 	}
-	for i := range pk.ShulkerBoxRecipes {
+	for i := range pk.UserDataShapelessRecipes {
 		writeRecipeType(r, recipeShulkerBox)
-		MarshalShapelessRecipe(r, &pk.ShulkerBoxRecipes[i].ShapelessRecipe)
+		MarshalShapelessRecipe(r, &pk.UserDataShapelessRecipes[i].ShapelessRecipe)
 	}
 	for i := range pk.ShapelessChemistryRecipes {
 		writeRecipeType(r, recipeShapelessChemistry)

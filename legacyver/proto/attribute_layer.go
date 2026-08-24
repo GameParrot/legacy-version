@@ -20,6 +20,9 @@ func MarshalEnvironmentAttributeData(r protocol.IO, x *protocol.EnvironmentAttri
 		r.Uint32(&x.LocalTransitionTicks)
 		r.Bool(&x.NoiseTransition)
 	}
+	if IsProtoGTE(r, ID2192) {
+		protocol.Single(r, &x.NoiseAlignment)
+	}
 }
 
 func MarshalAttributeLayerSettings(r protocol.IO, x *protocol.AttributeLayerSettings) {

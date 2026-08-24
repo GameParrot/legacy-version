@@ -8,6 +8,14 @@ import (
 
 func MarshalMapTrackedObject(r protocol.IO, x *protocol.MapTrackedObject) {
 	r.Int32(&x.Type)
+	if IsProtoGTE(r, ID2168) {
+		protocol.OptionalFunc(r, &x.EntityUniqueID, r.ActorUniqueID)
+		protocol.OptionalFunc(r, &x.BlockPosition, r.BlockPos)
+		if x.Type != protocol.MapObjectTypeEntity && x.Type != protocol.MapObjectTypeBlock {
+			r.UnknownEnumOption(x.Type, "map tracked object type")
+		}
+		return
+	}
 	switch x.Type {
 	case protocol.MapObjectTypeEntity:
 		entityID, _ := x.EntityUniqueID.Value()

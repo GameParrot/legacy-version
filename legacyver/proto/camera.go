@@ -26,15 +26,15 @@ func MarshalCameraPreset(r protocol.IO, x *protocol.CameraPreset) {
 	if IsProtoGTE(r, ID766) {
 		protocol.OptionalFunc(r, &x.TrackingRadius, r.Float32)
 	}
-	if IsProtoGTE(r, ID776) {
-		protocol.OptionalFunc(r, &x.MinYawLimit, r.Float32)
-		protocol.OptionalFunc(r, &x.MaxYawLimit, r.Float32)
-	}
 	protocol.OptionalFunc(r, &x.ViewOffset, r.Vec2)
 	if IsProtoGTE(r, ID729) {
 		protocol.OptionalFunc(r, &x.EntityOffset, r.Vec3)
 	}
 	protocol.OptionalFunc(r, &x.Radius, r.Float32)
+	if IsProtoGTE(r, ID776) {
+		protocol.OptionalFunc(r, &x.MinYawLimit, r.Float32)
+		protocol.OptionalFunc(r, &x.MaxYawLimit, r.Float32)
+	}
 	protocol.OptionalFunc(r, &x.AudioListener, r.Uint8)
 	protocol.OptionalFunc(r, &x.PlayerEffects, r.Bool)
 	if IsProtoGTE(r, ID748) && IsProtoLT(r, ID818) {
@@ -46,6 +46,10 @@ func MarshalCameraPreset(r protocol.IO, x *protocol.CameraPreset) {
 	}
 	if IsProtoGTE(r, ID800) {
 		protocol.OptionalFunc(r, &x.ControlScheme, r.Uint8)
+	}
+	if IsProtoGTE(r, ID2192) {
+		r.Bool(&x.ApplyInheritedStartingRotation)
+		protocol.OptionalFunc(r, &x.StartingRotation, r.Vec2)
 	}
 }
 

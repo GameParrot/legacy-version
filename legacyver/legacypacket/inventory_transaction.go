@@ -14,10 +14,12 @@ func InventoryTransaction(io protocol.IO, pk *packet.InventoryTransaction) {
 		if hasLegacy {
 			protocol.Slice(io, &pk.LegacySetItemSlots)
 		}
-		hasType := true
-		io.Bool(&hasType)
-		if !hasType {
-			io.InvalidValue(hasType, "InventoryTransaction transaction type", "expected presence bool to be true")
+		if proto.IsProtoLT(io, proto.ID2192) {
+			hasType := true
+			io.Bool(&hasType)
+			if !hasType {
+				io.InvalidValue(hasType, "InventoryTransaction transaction type", "expected presence bool to be true")
+			}
 		}
 	} else {
 		if pk.LegacyRequestID != 0 {
@@ -25,7 +27,7 @@ func InventoryTransaction(io protocol.IO, pk *packet.InventoryTransaction) {
 		}
 	}
 	io.TransactionDataType(&pk.TransactionData)
-	if proto.IsProtoGTE(io, proto.ID1001) {
+	if proto.IsProtoGTE(io, proto.ID1001) && proto.IsProtoLT(io, proto.ID2192) {
 		hasActions := true
 		io.Bool(&hasActions)
 		if !hasActions {

@@ -107,6 +107,7 @@ func registerPackets() {
 	registerPacket(&packet.ServerBoundDataDrivenScreenClosed{}, legacypacket.ServerBoundDataDrivenScreenClosed)
 	registerPacket(&packet.ServerBoundDataStore{}, legacypacket.ServerBoundDataStore)
 	registerPacket(&packet.ServerBoundDiagnostics{}, legacypacket.ServerBoundDiagnostics)
+	registerPacket(&packet.ServerBoundPackSettingChange{}, legacypacket.ServerBoundPackSettingChange)
 	registerPacket(&packet.ServerPresenceInfo{}, legacypacket.ServerPresenceInfo)
 	registerPacket(&packet.ShowStoreOffer{}, legacypacket.ShowStoreOffer)
 	registerPacket(&packet.SetActorLink{}, legacypacket.SetActorLink)
@@ -159,6 +160,11 @@ func convertPacketFunc(pid uint32, cur func() packet.Packet) func() packet.Packe
 			return &legacypacket.TranslatedStartGame{Pk: cur().(*packet.StartGame)}
 		}
 	}
+	if pid == packet.IDBossEvent {
+		return func() packet.Packet {
+			return &legacypacket.TranslatedBossEvent{Pk: cur().(*packet.BossEvent)}
+		}
+	}
 	if marshalFn, ok := packets[pid]; ok {
 		return func() packet.Packet {
 			return &translatedPacket{pk: cur(), marshalFn: marshalFn}
@@ -181,7 +187,7 @@ func (p *Protocol) ID() int32 {
 }
 
 func (p *Protocol) Packets(listener bool) packet.Pool {
-	if p.id < proto.ID2168 {
+	if p.id < proto.ID2192 {
 		base := packetPoolServer
 		if listener {
 			base = packetPoolClient
@@ -190,7 +196,9 @@ func (p *Protocol) Packets(listener bool) packet.Pool {
 		for id, constructor := range base {
 			pool[id] = constructor
 		}
-		pool[legacypacket.IDSetMovementAuthority] = func() packet.Packet { return &legacypacket.SetMovementAuthority{} }
+		if p.id < proto.ID2168 {
+			pool[legacypacket.IDSetMovementAuthority] = func() packet.Packet { return &legacypacket.SetMovementAuthority{} }
+		}
 		return pool
 	}
 	if listener {
@@ -219,6 +227,8 @@ func (p *Protocol) downgradePackets(pks []packet.Packet, conn *minecraft.Conn) [
 	for pkIndex, pk := range pks {
 		if p.id < proto.ID2168 && pk.ID() == packet.IDServerPlayerPostMovePosition {
 			return []packet.Packet{}
+		} else if pk.ID() == packet.IDBossEvent {
+			pks[pkIndex] = &legacypacket.TranslatedBossEvent{Pk: pk.(*packet.BossEvent)}
 		} else if pk.ID() == packet.IDClientboundUpdateSoundData {
 			update := pk.(*packet.ClientboundUpdateSoundData)
 			if _, stop := update.Stop.Value(); !stop {
@@ -280,6 +290,8 @@ func (p *Protocol) upgradePackets(pks []packet.Packet, _ *minecraft.Conn) []pack
 		if pk.ID() == packet.IDStartGame {
 			legacyStartGame := pk.(*legacypacket.TranslatedStartGame)
 			pks[pkIndex] = legacyStartGame.Pk
+		} else if translated, ok := pk.(*legacypacket.TranslatedBossEvent); ok {
+			pks[pkIndex] = translated.Pk
 		} else if translated, ok := pk.(*translatedPacket); ok {
 			pks[pkIndex] = translated.pk
 		}

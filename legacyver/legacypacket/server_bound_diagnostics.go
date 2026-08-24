@@ -23,7 +23,16 @@ func ServerBoundDiagnostics(io protocol.IO, pk *packet.ServerBoundDiagnostics) {
 			protocol.Slice(io, &pk.MemoryCategoryValues)
 		}
 		if proto.IsProtoGTE(io, proto.ID975) {
-			protocol.Slice(io, &pk.EntityDiagnostics)
+			protocol.FuncIOSlice(io, &pk.EntityDiagnostics, func(io protocol.IO, x *protocol.EntityDiagnosticTimingInfo) {
+				io.String(&x.DisplayName)
+				io.String(&x.Entity)
+				io.Uint64(&x.DurationNanos)
+				io.Uint8(&x.PercentOfTotal)
+				if proto.IsProtoGTE(io, proto.ID2192) {
+					io.Vec3(&x.Position)
+					io.String(&x.Dimension)
+				}
+			})
 			protocol.Slice(io, &pk.SystemDiagnostics)
 			if proto.IsProtoGTE(io, proto.ID2168) {
 				protocol.FuncIOSlice(io, &pk.SystemCategories, func(io protocol.IO, x *protocol.SystemCategory) {
